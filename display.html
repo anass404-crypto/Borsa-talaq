@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-alt: #F7F8FA;
+    --border: #E3E6EA;
+    --text: #1A2332;
+    --text-dim: #6B7684;
+    --navy: #0B2545;
+    --up: #0E9F5C;
+    --up-bg: #E7F7EF;
+    --down: #D62B3C;
+    --down-bg: #FCEAEC;
+    --gold: #C9941F;
+    --gold-bg: #FBF3E2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; overflow: hidden; height: 100vh; direction: rtl; }
+
+  .ticker-wrap { background: var(--navy); height: 36px; display: flex; align-items: center; overflow: hidden; position: relative; }
+  .ticker-wrap::before, .ticker-wrap::after { content: ''; position: absolute; top: 0; bottom: 0; width: 50px; z-index: 2; pointer-events: none; }
+  .ticker-wrap::before { right: 0; background: linear-gradient(to left, var(--navy), transparent); }
+  .ticker-wrap::after { left: 0; background: linear-gradient(to right, var(--navy), transparent); }
+  .ticker-track { display: flex; gap: 30px; white-space: nowrap; animation: scroll-rtl 55s linear infinite; padding-right: 100%; }
+  @keyframes scroll-rtl { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+  .ticker-item { display: flex; align-items: center; gap: 6px; font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 12.5px; color: #fff; }
+  .ticker-item .tk-name { color: #9BB1CC; font-weight: 500; font-size: 10.5px; }
+  .ticker-item .tk-price { font-variant-numeric: tabular-nums; }
+  .ticker-item .tk-change { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .ticker-wrap .up { color: #4ADE9B; }
+  .ticker-wrap .down { color: #FF8A98; }
+
+  .news-bar { background: var(--gold-bg); border-bottom: 1px solid var(--border); height: 24px; display: flex; align-items: center; overflow: hidden; position: relative; }
+  .news-tag { background: var(--gold); color: #fff; font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 9.5px; padding: 3px 10px; height: 100%; display: flex; align-items: center; flex-shrink: 0; z-index: 3; }
+  .news-track-wrap { flex: 1; overflow: hidden; height: 100%; }
+  .news-track { display: flex; gap: 40px; white-space: nowrap; animation: scroll-rtl 30s linear infinite; padding-right: 100%; align-items: center; height: 100%; }
+  .news-item { font-size: 11px; color: #6B5410; font-weight: 600; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 7px 20px; border-bottom: 1px solid var(--border); }
+  .brand { font-family: 'Tajawal', sans-serif; font-weight: 900; font-size: 18px; color: var(--navy); }
+  .brand span { color: var(--gold); }
+  .market-index { display: flex; align-items: center; gap: 8px; font-family: 'Tajawal', sans-serif; }
+  .market-index .idx-label { color: var(--text-dim); font-size: 10.5px; font-family: 'Cairo', sans-serif; }
+  .market-index .idx-value { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--navy); }
+  .clock { color: var(--text-dim); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+
+  .main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 36px - 24px - 45px); }
+  .panel { overflow: hidden; padding: 10px 14px; display: flex; flex-direction: column; }
+  .panel:first-child { border-left: 1px solid var(--border); }
+  .panel-title { font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 11.5px; color: var(--navy); margin-bottom: 7px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .panel-title::before { content: ''; width: 3px; height: 11px; background: var(--gold); border-radius: 2px; }
+
+  .stock-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 5px; flex: 1; }
+  .stock-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
+  .stock-card.flash-up { animation: flashUp 1s ease; }
+  .stock-card.flash-down { animation: flashDown 1s ease; }
+  @keyframes flashUp { 0% { background: var(--up-bg); border-color: var(--up); } 100% { background: var(--bg); } }
+  @keyframes flashDown { 0% { background: var(--down-bg); border-color: var(--down); } 100% { background: var(--bg); } }
+  .stock-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .stock-ticker { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 12px; color: var(--navy); }
+  .stock-name { font-size: 9px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .stock-bottom { display: flex; justify-content: space-between; align-items: baseline; }
+  .stock-price { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .stock-change { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .portfolios-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 7px; flex: 1; overflow: hidden; }
+  .portfolio-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; overflow: hidden; }
+  .portfolio-card.rank-1 { border-color: var(--gold); box-shadow: 0 2px 10px rgba(201,148,31,0.16); }
+  .pf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; flex-shrink: 0; }
+  .pf-name-wrap { display: flex; align-items: center; gap: 5px; }
+  .pf-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .pf-name { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 13px; color: var(--navy); }
+  .pf-rank-badge { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-alt); color: var(--text-dim); display: flex; align-items: center; justify-content: center; font-family: 'Tajawal', sans-serif; font-weight: 900; font-size: 9.5px; flex-shrink: 0; }
+  .rank-1 .pf-rank-badge { background: var(--gold); color: #fff; }
+  .pf-totals { display: flex; justify-content: space-between; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dashed var(--border); flex-shrink: 0; }
+  .pf-total-item { text-align: center; flex: 1; }
+  .pf-total-label { font-size: 8px; color: var(--text-dim); margin-bottom: 1px; }
+  .pf-total-value { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .pf-total-value.grand { color: var(--navy); font-size: 12.5px; }
+  .pf-positions { flex: 1; overflow-y: auto; min-height: 0; }
+  .pf-position-row { display: grid; grid-template-columns: 1.2fr 0.6fr 0.9fr 1fr; gap: 3px; align-items: center; padding: 2.5px 0; border-bottom: 1px solid var(--bg-alt); font-size: 8.8px; }
+  .pf-position-row.header-row { font-weight: 700; color: var(--text-dim); font-size: 7.8px; border-bottom: 1px solid var(--border); }
+  .pf-pos-ticker { font-family: 'Tajawal', sans-serif; font-weight: 700; color: var(--navy); font-size: 9.3px; }
+  .pf-pos-qty { font-variant-numeric: tabular-nums; color: var(--text-dim); }
+  .pf-pos-avg { font-variant-numeric: tabular-nums; color: var(--text-dim); }
+  .pf-pos-pl { font-variant-numeric: tabular-nums; font-weight: 700; text-align: left; }
+  .pf-pos-pl.up { color: var(--up); }
+  .pf-pos-pl.down { color: var(--down); }
+  .pf-empty { text-align: center; color: var(--text-dim); font-size: 9px; padding: 10px 0; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<div class="news-bar" id="newsBarEl">
+  <div class="news-tag">عاجل</div>
+  <div class="news-track-wrap"><div class="news-track" id="newsTrack"></div></div>
+</div>
+
+<div class="header">
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="market-index" id="marketIndexEl">
+    <span class="idx-label">المؤشر العام</span>
+    <span class="idx-value" id="marketIndex">—</span>
+    <span class="stock-change" id="marketIndexChange"></span>
+  </div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-title">سوق الأسهم</div>
+    <div class="stock-grid" id="stockGrid"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">محافظ المجموعات</div>
+    <div class="portfolios-grid" id="portfoliosGrid"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let companies = [];
+let groups = [];
+let holdings = [];
+
+const NEWS_TEMPLATES = [
+  c => `صفقة كبيرة: مؤسسة مالية تنفذ شراء ضخم على سهم ${c.ticker}`,
+  c => `تقارير: ${c.name} تسجل نشاطًا تداوليًا لافتًا اليوم`,
+  c => `محللون: سهم ${c.ticker} يشهد تذبذبًا واسعًا في الجلسة الحالية`,
+  c => `${c.name} ضمن الأسهم الأكثر تداولًا حاليًا`,
+];
+
+function fmt(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtInt(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+
+let audioCtx = null;
+function unlockAudio() {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      console.log('🔊 تم تفعيل الصوت بنجاح');
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch(e) {
+    console.error('فشل تفعيل الصوت', e);
+  }
+}
+function playDing() {
+  if (!audioCtx) {
+    console.warn('⚠️ الصوت غير مفعّل بعد - يحتاج المستخدم يضغط بالشاشة أول مرة');
+    return;
+  }
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.45);
+    console.log('🔔 تم تشغيل نغمة التنبيه');
+  } catch(e) { console.warn('Audio play failed', e); }
+}
+['click','touchstart','keydown'].forEach(evt => document.addEventListener(evt, unlockAudio));
+
+function renderTicker() {
+  const track = document.getElementById('tickerTrack');
+  const items = companies.map(c => {
+    const change = c.current_price - c.previous_price;
+    const pct = c.previous_price ? (change / c.previous_price) * 100 : 0;
+    const cls = change >= 0 ? 'up' : 'down';
+    const arrow = change >= 0 ? '▲' : '▼';
+    return `<div class="ticker-item"><span class="tk-ticker">${c.ticker}</span><span class="tk-name">${c.name}</span><span class="tk-price">${fmt(c.current_price)}</span><span class="tk-change ${cls}">${arrow} ${Math.abs(pct).toFixed(2)}%</span></div>`;
+  }).join('');
+  track.innerHTML = items + items;
+}
+
+function renderStocks(changedIds = {}) {
+  const grid = document.getElementById('stockGrid');
+  grid.innerHTML = companies.map(c => {
+    const change = c.current_price - c.previous_price;
+    const pct = c.previous_price ? (change / c.previous_price) * 100 : 0;
+    const cls = change >= 0 ? 'up' : 'down';
+    const arrow = change >= 0 ? '▲' : '▼';
+    const flashClass = changedIds[c.id] ? (changedIds[c.id] === 'up' ? 'flash-up' : 'flash-down') : '';
+    return `<div class="stock-card ${flashClass}">
+      <div class="stock-top"><span class="stock-ticker">${c.ticker}</span></div>
+      <div class="stock-name">${c.name}</div>
+      <div class="stock-bottom"><span class="stock-price">${fmt(c.current_price)}</span><span class="stock-change ${cls}">${arrow} ${Math.abs(pct).toFixed(2)}%</span></div>
+    </div>`;
+  }).join('');
+
+  const avgPct = companies.length
+    ? companies.reduce((sum, c) => sum + (c.previous_price ? ((c.current_price - c.previous_price) / c.previous_price) * 100 : 0), 0) / companies.length
+    : 0;
+  document.getElementById('marketIndex').textContent = (10000 * (1 + avgPct/100)).toFixed(2);
+  const idxChangeEl = document.getElementById('marketIndexChange');
+  idxChangeEl.className = 'stock-change ' + (avgPct >= 0 ? 'up' : 'down');
+  idxChangeEl.textContent = (avgPct >= 0 ? '▲ ' : '▼ ') + Math.abs(avgPct).toFixed(2) + '%';
+}
+
+function portfolioStockValue(groupId) {
+  return holdings.filter(h => h.group_id === groupId).reduce((sum, h) => {
+    const c = companies.find(c => c.id === h.company_id);
+    return sum + (c ? c.current_price * h.shares_owned : 0);
+  }, 0);
+}
+
+function renderPortfolios() {
+  const grid = document.getElementById('portfoliosGrid');
+  const ranked = [...groups]
+    .map(g => ({ ...g, stockVal: portfolioStockValue(g.id), total: g.balance + portfolioStockValue(g.id) }))
+    .sort((a, b) => b.total - a.total);
+
+  grid.innerHTML = ranked.map((g, i) => {
+    const positions = holdings
+      .filter(h => h.group_id === g.id && h.shares_owned > 0)
+      .map(h => {
+        const c = companies.find(c => c.id === h.company_id);
+        if (!c) return null;
+        const currentVal = c.current_price * h.shares_owned;
+        const costVal = h.avg_purchase_price * h.shares_owned;
+        const pl = currentVal - costVal;
+        const plPct = costVal ? (pl / costVal) * 100 : 0;
+        return { ticker: c.ticker, qty: h.shares_owned, avgPrice: h.avg_purchase_price, pl, plPct };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Math.abs(b.pl) - Math.abs(a.pl));
+
+    const positionsHtml = positions.length === 0
+      ? `<div class="pf-empty">لا توجد أسهم مملوكة حاليًا</div>`
+      : `<div class="pf-position-row header-row"><span>السهم</span><span>الكمية</span><span>سعر الشراء</span><span style="text-align:left">الربح/الخسارة</span></div>` +
+        positions.map(p => `
+          <div class="pf-position-row">
+            <span class="pf-pos-ticker">${p.ticker}</span>
+            <span class="pf-pos-qty">${fmtInt(p.qty)}</span>
+            <span class="pf-pos-avg">${fmt(p.avgPrice)}</span>
+            <span class="pf-pos-pl ${p.pl >= 0 ? 'up' : 'down'}">${p.pl >= 0 ? '+' : ''}${fmtInt(p.pl)} (${p.pl >= 0 ? '+' : ''}${p.plPct.toFixed(1)}%)</span>
+          </div>`).join('');
+
+    return `
+    <div class="portfolio-card ${i === 0 ? 'rank-1' : ''}">
+      <div class="pf-header">
+        <div class="pf-name-wrap"><span class="pf-dot" style="background:${g.color}"></span><span class="pf-name">${g.name}</span></div>
+        <span class="pf-rank-badge">${i + 1}</span>
+      </div>
+      <div class="pf-totals">
+        <div class="pf-total-item"><div class="pf-total-label">السيولة</div><div class="pf-total-value">${fmtInt(g.balance)}</div></div>
+        <div class="pf-total-item"><div class="pf-total-label">قيمة الأسهم</div><div class="pf-total-value">${fmtInt(g.stockVal)}</div></div>
+        <div class="pf-total-item"><div class="pf-total-label">الإجمالي</div><div class="pf-total-value grand">${fmtInt(g.total)}</div></div>
+      </div>
+      <div class="pf-positions">${positionsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderNewsTrack(items) {
+  const track = document.getElementById('newsTrack');
+  const html = items.map(text => `<div class="news-item">${text}</div>`).join('');
+  track.innerHTML = html + html; // تكرار مرتين لضمان حلقة متصلة بدون فراغات (نفس منطق التيكر العلوي)
+}
+
+let newsItems = [];
+function addNewsItem(text) {
+  newsItems.unshift(text);
+  if (newsItems.length > 10) newsItems.pop();
+  renderNewsTrack(newsItems);
+}
+
+function seedNews() {
+  newsItems = [];
+  for (let i = 0; i < 5; i++) {
+    const c = companies[Math.floor(Math.random() * companies.length)];
+    const template = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
+    newsItems.push(template(c));
+  }
+  renderNewsTrack(newsItems);
+}
+
+async function loadAll() {
+  const [{ data: c }, { data: g }, { data: h }] = await Promise.all([
+    sb.from('companies').select('*').order('ticker'),
+    sb.from('groups').select('*'),
+    sb.from('holdings').select('*'),
+  ]);
+  companies = c || [];
+  groups = g || [];
+  holdings = h || [];
+  renderTicker();
+  renderStocks();
+  renderPortfolios();
+  seedNews();
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+async function applyDisplaySettings() {
+  const { data } = await sb.from('app_settings').select('key, value').in('key', ['show_news_bar', 'show_market_index']);
+  const settings = {};
+  (data || []).forEach(row => { settings[row.key] = row.value; });
+
+  document.getElementById('newsBarEl').style.display = settings.show_news_bar === 'false' ? 'none' : 'flex';
+  document.getElementById('marketIndexEl').style.display = settings.show_market_index === 'false' ? 'none' : 'flex';
+}
+
+sb.channel('public:app_settings')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, () => {
+    applyDisplaySettings();
+  })
+  .subscribe();
+
+applyDisplaySettings();
+loadAll();
+
+const MIN_PRICE = 3;
+const MAX_CHANGE_PERCENT = 30;
+
+function volatilityRange(type) {
+  switch (type) {
+    case 'calm': return 6;
+    case 'wild': return MAX_CHANGE_PERCENT;
+    case 'trend_up': return 12;
+    case 'trend_down': return 12;
+    default: return 16;
+  }
+}
+function biasedRandomChange(type) {
+  const range = volatilityRange(type);
+  let raw = (Math.random() * 2 - 1) * range;
+  if (type === 'trend_up') raw = Math.abs(raw) * 0.75 + (Math.random() * 2 - 1) * 2;
+  if (type === 'trend_down') raw = -Math.abs(raw) * 0.75 + (Math.random() * 2 - 1) * 2;
+  return raw;
+}
+
+async function tickPrices() {
+  if (!companies.length) return;
+  const updates = companies.map(c => {
+    const changePct = biasedRandomChange(c.volatility_type || 'medium');
+    let newPrice = c.current_price * (1 + changePct / 100);
+    newPrice = Math.max(newPrice, MIN_PRICE);
+    newPrice = Math.round(newPrice * 100) / 100;
+    return { id: c.id, previous_price: c.current_price, current_price: newPrice, ticker: c.ticker, name: c.name };
+  });
+
+  let biggestMove = null;
+  for (const u of updates) {
+    await sb.from('companies').update({ previous_price: u.previous_price, current_price: u.current_price, updated_at: new Date().toISOString() }).eq('id', u.id);
+    const movePct = Math.abs((u.current_price - u.previous_price) / u.previous_price) * 100;
+    if (!biggestMove || movePct > biggestMove.movePct) biggestMove = { ...u, movePct };
+  }
+
+  sb.from('price_history').insert(updates.map(u => ({ company_id: u.id, price: u.current_price })));
+
+  if (biggestMove && biggestMove.movePct > 12) {
+    playDing();
+    const dir = biggestMove.current_price >= biggestMove.previous_price ? 'يقفز' : 'ينهار';
+    addNewsItem(`عاجل: سهم ${biggestMove.ticker} ${dir} بنسبة ${biggestMove.movePct.toFixed(1)}% خلال لحظات`);
+  }
+}
+
+function scheduleNextTick() {
+  const delay = 12000 + Math.random() * 13000;
+  console.log(`⏳ تحديث الأسعار القادم بعد ${(delay/1000).toFixed(0)} ثانية`);
+  setTimeout(async () => { await tickPrices(); scheduleNextTick(); }, delay);
+}
+scheduleNextTick();
+
+console.log('📰 سيتم إضافة خبر جديد كل 18 ثانية');
+setInterval(() => {
+  if (!companies.length) return;
+  const c = companies[Math.floor(Math.random() * companies.length)];
+  const template = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
+  console.log('📰 خبر جديد:', template(c));
+  addNewsItem(template(c));
+}, 18000);
+
+sb.channel('public:companies')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'companies' }, payload => {
+    const idx = companies.findIndex(c => c.id === payload.new.id);
+    const changed = {};
+    if (idx >= 0) { changed[payload.new.id] = payload.new.current_price >= companies[idx].current_price ? 'up' : 'down'; companies[idx] = payload.new; }
+    renderTicker(); renderStocks(changed); renderPortfolios();
+  }).subscribe();
+
+sb.channel('public:groups')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, payload => {
+    if (payload.eventType === 'UPDATE') { const idx = groups.findIndex(g => g.id === payload.new.id); if (idx >= 0) groups[idx] = payload.new; }
+    else if (payload.eventType === 'INSERT') groups.push(payload.new);
+    else if (payload.eventType === 'DELETE') groups = groups.filter(g => g.id !== payload.old.id);
+    renderPortfolios();
+  }).subscribe();
+
+sb.channel('public:holdings')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'holdings' }, payload => {
+    if (payload.eventType === 'DELETE') holdings = holdings.filter(h => h.id !== payload.old.id);
+    else { const idx = holdings.findIndex(h => h.id === payload.new.id); if (idx >= 0) holdings[idx] = payload.new; else holdings.push(payload.new); }
+    renderPortfolios();
+  }).subscribe();
+</script>
+</body>
+</html>
