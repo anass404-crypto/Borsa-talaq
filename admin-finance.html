@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>المؤسسة المالية — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #0A0E14;
+    --surface: #131820;
+    --surface-2: #1A2029;
+    --border: #232a35;
+    --text: #E8EAED;
+    --text-dim: #6B7684;
+    --up: #00D964;
+    --down: #FF3B5C;
+    --gold: #D4A645;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    min-height: 100vh;
+    direction: rtl;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 40px;
+  }
+
+  .brand {
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .brand span { color: var(--gold); }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .field-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    display: block;
+    font-weight: 600;
+  }
+  input[type="password"], input[type="number"], select {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 14px;
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--gold); }
+  input::placeholder { color: var(--text-dim); font-weight: 400; }
+
+  select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7684' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: left 14px center;
+    padding-left: 40px;
+  }
+
+  .btn {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    padding: 17px;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+    margin-top: 10px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-buy { background: var(--up); color: #052e15; }
+  .btn-sell { background: var(--down); color: #2e0510; }
+  .btn:disabled { opacity: 0.35; }
+  .btn-secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--border); margin-top: 14px; }
+
+  .error-msg { color: var(--down); font-size: 14px; margin-top: 12px; text-align: center; min-height: 18px; }
+  .field-group { margin-bottom: 16px; }
+
+  /* ===== Tabs (Buy / Sell) ===== */
+  .tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    text-align: center;
+    padding: 13px;
+    border-radius: 10px;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    color: var(--text-dim);
+    transition: all 0.15s ease;
+  }
+  .tab.active.buy { background: rgba(0,217,100,0.15); border-color: var(--up); color: var(--up); }
+  .tab.active.sell { background: rgba(255,59,92,0.15); border-color: var(--down); color: var(--down); }
+
+  /* ===== Summary box ===== */
+  .summary-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+  }
+  .summary-row .label { color: var(--text-dim); }
+  .summary-row .value { font-family: 'Tajawal', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .summary-row.total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+  .summary-row.total .value { font-size: 19px; color: var(--gold); }
+
+  .insufficient { color: var(--down); font-size: 13px; margin-top: 6px; display: none; }
+  .insufficient.show { display: block; }
+
+  /* ===== Success ===== */
+  .success-box { text-align: center; padding: 16px 0; }
+  .success-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 32px;
+  }
+  .success-icon.buy { background: rgba(0,217,100,0.15); }
+  .success-icon.sell { background: rgba(255,59,92,0.15); }
+  .success-title { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 19px; margin-bottom: 6px; }
+  .success-detail { color: var(--text-dim); font-size: 14px; line-height: 1.6; }
+  .success-detail b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  .hidden { display: none !important; }
+  .top-bar { width: 100%; max-width: 420px; display: flex; justify-content: flex-end; margin-bottom: 8px; }
+  .logout-link { color: var(--text-dim); font-size: 13px; text-decoration: underline; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="brand">بورصة <span>تألق</span></div>
+<div class="subtitle">لوحة المؤسسة المالية</div>
+
+<!-- ===== شاشة تسجيل الدخول ===== -->
+<div class="card" id="loginScreen">
+  <div class="field-group">
+    <label class="field-label">كلمة المرور</label>
+    <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور" inputmode="numeric">
+  </div>
+  <button class="btn btn-buy" id="loginBtn">دخول</button>
+  <div class="error-msg" id="loginError"></div>
+</div>
+
+<!-- ===== الشاشة الرئيسية ===== -->
+<div class="hidden" id="mainScreen" style="width:100%; max-width:420px;">
+  <div class="top-bar"><span class="logout-link" id="logoutBtn">تسجيل خروج</span></div>
+
+  <div class="tabs">
+    <div class="tab active buy" id="buyTab">شراء</div>
+    <div class="tab sell" id="sellTab">بيع</div>
+  </div>
+
+  <div class="card">
+    <div class="field-group">
+      <label class="field-label">المجموعة</label>
+      <select id="groupSelect">
+        <option value="">اختر المجموعة...</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">الشركة</label>
+      <select id="companySelect">
+        <option value="">اختر الشركة...</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" id="quantityLabel">عدد الأسهم</label>
+      <input type="number" id="quantityInput" placeholder="0" inputmode="numeric" min="1">
+      <div class="insufficient" id="ownedHint"></div>
+    </div>
+
+    <div class="summary-box" id="summaryBox" style="display:none;">
+      <div class="summary-row">
+        <span class="label">سعر السهم الحالي</span>
+        <span class="value" id="sumPrice">—</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">رصيد المجموعة الحالي</span>
+        <span class="value" id="sumBalance">—</span>
+      </div>
+      <div class="summary-row total">
+        <span class="label" id="sumTotalLabel">الإجمالي المطلوب</span>
+        <span class="value" id="sumTotal">—</span>
+      </div>
+    </div>
+
+    <div class="insufficient" id="insufficientMsg">الرصيد غير كافٍ لإتمام هذه العملية</div>
+
+    <button class="btn btn-buy" id="executeBtn" disabled>تنفيذ الشراء</button>
+    <div class="error-msg" id="executeError"></div>
+  </div>
+</div>
+
+<!-- ===== شاشة التأكيد ===== -->
+<div class="hidden" id="successScreen" style="width:100%; max-width:420px;">
+  <div class="card success-box">
+    <div class="success-icon" id="successIcon">✅</div>
+    <div class="success-title" id="successTitle">تمت عملية الشراء</div>
+    <div class="success-detail" id="successDetail"></div>
+    <button class="btn btn-buy" id="newOperationBtn" style="margin-top:24px;">عملية جديدة</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// كلمة المرور تُقرأ الآن من قاعدة البيانات (قابلة للتعديل من لوحة إدارة المسابقة)
+async function getAdminPassword() {
+  const { data } = await sb.from('app_settings').select('value').eq('key', 'password_finance').single();
+  return data ? data.value : null;
+}
+
+let groups = [];
+let companies = [];
+let holdings = [];
+let mode = 'buy'; // 'buy' or 'sell'
+
+function fmt(n) {
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ===== تسجيل الدخول =====
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const val = document.getElementById('passwordInput').value;
+  const ADMIN_PASSWORD = await getAdminPassword();
+  if (ADMIN_PASSWORD !== null && val === ADMIN_PASSWORD) {
+    sessionStorage.setItem('nadi_auth_password_finance', '1');
+    showMainScreen();
+  } else {
+    document.getElementById('loginError').textContent = 'كلمة المرور غير صحيحة';
+  }
+});
+document.getElementById('passwordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('nadi_auth_password_finance');
+  document.getElementById('mainScreen').classList.add('hidden');
+  document.getElementById('successScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('passwordInput').value = '';
+});
+
+async function showMainScreen() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  await loadData();
+}
+
+// ===== تحميل البيانات =====
+async function loadData() {
+  const [{ data: g }, { data: c }, { data: h }] = await Promise.all([
+    sb.from('groups').select('*').order('name'),
+    sb.from('companies').select('*').order('ticker'),
+    sb.from('holdings').select('*'),
+  ]);
+  groups = g || [];
+  companies = c || [];
+  holdings = h || [];
+
+  document.getElementById('groupSelect').innerHTML =
+    '<option value="">اختر المجموعة...</option>' +
+    groups.map(gr => `<option value="${gr.id}">${gr.name}</option>`).join('');
+
+  document.getElementById('companySelect').innerHTML =
+    '<option value="">اختر الشركة...</option>' +
+    companies.map(co => `<option value="${co.id}">${co.ticker} — ${co.name}</option>`).join('');
+}
+
+// ===== تبديل شراء/بيع =====
+document.getElementById('buyTab').addEventListener('click', () => switchMode('buy'));
+document.getElementById('sellTab').addEventListener('click', () => switchMode('sell'));
+
+function switchMode(newMode) {
+  mode = newMode;
+  document.getElementById('buyTab').classList.toggle('active', mode === 'buy');
+  document.getElementById('sellTab').classList.toggle('active', mode === 'sell');
+  document.getElementById('quantityLabel').textContent = mode === 'buy' ? 'عدد الأسهم' : 'عدد الأسهم المراد بيعها';
+  document.getElementById('sumTotalLabel').textContent = mode === 'buy' ? 'الإجمالي المطلوب' : 'الإجمالي المستلم';
+
+  const btn = document.getElementById('executeBtn');
+  btn.className = 'btn ' + (mode === 'buy' ? 'btn-buy' : 'btn-sell');
+  btn.textContent = mode === 'buy' ? 'تنفيذ الشراء' : 'تنفيذ البيع';
+
+  document.getElementById('quantityInput').value = '';
+  document.getElementById('ownedHint').classList.remove('show');
+  updateSummary();
+}
+
+// ===== تغيير المجموعة أو الشركة ===== 
+document.getElementById('groupSelect').addEventListener('change', onSelectionChange);
+document.getElementById('companySelect').addEventListener('change', onSelectionChange);
+document.getElementById('quantityInput').addEventListener('input', updateSummary);
+
+function onSelectionChange() {
+  document.getElementById('quantityInput').value = '';
+  updateOwnedHint();
+  updateSummary();
+}
+
+function getOwnedShares(groupId, companyId) {
+  const h = holdings.find(h => h.group_id === groupId && h.company_id === companyId);
+  return h ? Number(h.shares_owned) : 0;
+}
+
+function updateOwnedHint() {
+  const groupId = document.getElementById('groupSelect').value;
+  const companyId = document.getElementById('companySelect').value;
+  const hint = document.getElementById('ownedHint');
+
+  if (mode === 'sell' && groupId && companyId) {
+    const owned = getOwnedShares(groupId, companyId);
+    hint.textContent = `المجموعة تملك حاليًا ${owned} سهم من هذه الشركة`;
+    hint.style.color = 'var(--text-dim)';
+    hint.classList.add('show');
+  } else {
+    hint.classList.remove('show');
+  }
+}
+
+function updateSummary() {
+  const groupId = document.getElementById('groupSelect').value;
+  const companyId = document.getElementById('companySelect').value;
+  const qty = parseFloat(document.getElementById('quantityInput').value) || 0;
+
+  const summaryBox = document.getElementById('summaryBox');
+  const insufficientMsg = document.getElementById('insufficientMsg');
+  const executeBtn = document.getElementById('executeBtn');
+
+  if (!groupId || !companyId || qty <= 0) {
+    summaryBox.style.display = 'none';
+    insufficientMsg.classList.remove('show');
+    executeBtn.disabled = true;
+    return;
+  }
+
+  const group = groups.find(g => g.id === groupId);
+  const company = companies.find(c => c.id === companyId);
+  const total = qty * company.current_price;
+
+  summaryBox.style.display = 'block';
+  document.getElementById('sumPrice').textContent = fmt(company.current_price) + ' ر.س';
+  document.getElementById('sumBalance').textContent = fmt(group.balance) + ' ر.س';
+  document.getElementById('sumTotal').textContent = fmt(total) + ' ر.س';
+
+  let valid = true;
+
+  if (mode === 'buy') {
+    if (total > group.balance) {
+      insufficientMsg.textContent = 'الرصيد غير كافٍ لإتمام عملية الشراء';
+      insufficientMsg.classList.add('show');
+      valid = false;
+    } else {
+      insufficientMsg.classList.remove('show');
+    }
+  } else {
+    const owned = getOwnedShares(groupId, companyId);
+    if (qty > owned) {
+      insufficientMsg.textContent = `لا يمكن بيع أكثر من المملوك (${owned} سهم)`;
+      insufficientMsg.classList.add('show');
+      valid = false;
+    } else {
+      insufficientMsg.classList.remove('show');
+    }
+  }
+
+  executeBtn.disabled = !valid;
+}
+
+// ===== تنفيذ العملية =====
+document.getElementById('executeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('executeBtn');
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = 'جاري التنفيذ...';
+  document.getElementById('executeError').textContent = '';
+
+  try {
+    const groupId = document.getElementById('groupSelect').value;
+    const companyId = document.getElementById('companySelect').value;
+    const qty = parseFloat(document.getElementById('quantityInput').value);
+
+    const group = groups.find(g => g.id === groupId);
+    const company = companies.find(c => c.id === companyId);
+    const total = qty * company.current_price;
+
+    let existingHolding = holdings.find(h => h.group_id === groupId && h.company_id === companyId);
+
+    if (mode === 'buy') {
+      // تحديث الرصيد
+      await sb.from('groups').update({ balance: group.balance - total }).eq('id', groupId);
+
+      // تحديث أو إنشاء المحفظة
+      if (existingHolding) {
+        const newShares = Number(existingHolding.shares_owned) + qty;
+        const newAvgPrice = ((existingHolding.shares_owned * existingHolding.avg_purchase_price) + total) / newShares;
+        await sb.from('holdings').update({ shares_owned: newShares, avg_purchase_price: newAvgPrice }).eq('id', existingHolding.id);
+      } else {
+        await sb.from('holdings').insert({ group_id: groupId, company_id: companyId, shares_owned: qty, avg_purchase_price: company.current_price });
+      }
+
+      await sb.from('transactions').insert({
+        group_id: groupId, company_id: companyId, type: 'buy',
+        shares: qty, price: company.current_price, total_value: total,
+        executed_by: 'مؤسسة مالية'
+      });
+
+      document.getElementById('successIcon').className = 'success-icon buy';
+      document.getElementById('successIcon').textContent = '📈';
+      document.getElementById('successTitle').textContent = 'تمت عملية الشراء';
+      document.getElementById('successDetail').innerHTML =
+        `اشترت مجموعة <b>${group.name}</b> <b>${qty}</b> سهم من <b>${company.ticker}</b><br>بإجمالي <b>${fmt(total)}</b> ر.س`;
+
+    } else {
+      // بيع
+      await sb.from('groups').update({ balance: group.balance + total }).eq('id', groupId);
+
+      const newShares = Number(existingHolding.shares_owned) - qty;
+      await sb.from('holdings').update({ shares_owned: newShares }).eq('id', existingHolding.id);
+
+      await sb.from('transactions').insert({
+        group_id: groupId, company_id: companyId, type: 'sell',
+        shares: qty, price: company.current_price, total_value: total,
+        executed_by: 'مؤسسة مالية'
+      });
+
+      document.getElementById('successIcon').className = 'success-icon sell';
+      document.getElementById('successIcon').textContent = '📉';
+      document.getElementById('successTitle').textContent = 'تمت عملية البيع';
+      document.getElementById('successDetail').innerHTML =
+        `باعت مجموعة <b>${group.name}</b> <b>${qty}</b> سهم من <b>${company.ticker}</b><br>واستلمت <b>${fmt(total)}</b> ر.س`;
+    }
+
+    document.getElementById('mainScreen').classList.add('hidden');
+    document.getElementById('successScreen').classList.remove('hidden');
+
+  } catch (err) {
+    document.getElementById('executeError').textContent = 'حدث خطأ، حاول مرة أخرى';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+document.getElementById('newOperationBtn').addEventListener('click', async () => {
+  document.getElementById('groupSelect').value = '';
+  document.getElementById('companySelect').value = '';
+  document.getElementById('quantityInput').value = '';
+  document.getElementById('summaryBox').style.display = 'none';
+  document.getElementById('insufficientMsg').classList.remove('show');
+  document.getElementById('ownedHint').classList.remove('show');
+  document.getElementById('executeBtn').disabled = true;
+  document.getElementById('successScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  await loadData();
+});
+
+// ===== تحقق من جلسة سابقة =====
+if (sessionStorage.getItem('nadi_auth_password_finance') === '1') {
+  showMainScreen();
+}
+</script>
+</body>
+</html>
