@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نتائج المجموعات — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --bg: #03080F;
+  --surface: #091320;
+  --border: #0F2035;
+  --text: #E8EDF3;
+  --dim: #4A6070;
+  --up: #00E676;
+  --up-bg: rgba(0,230,118,0.08);
+  --down: #FF3D5A;
+  --down-bg: rgba(255,61,90,0.08);
+  --gold: #FFB800;
+  --gold-bg: rgba(255,184,0,0.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(11,37,69,0.6) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgba(9,19,32,0.8) 0%, transparent 60%);
+  color: var(--text);
+  font-family: 'Cairo', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  direction: rtl;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== HEADER ===== */
+.header {
+  background: linear-gradient(180deg, rgba(11,37,69,0.95) 0%, transparent 100%);
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+}
+.brand { font-family:'Tajawal',sans-serif; font-weight:900; font-size:24px; color:#fff; }
+.brand em { color:var(--gold); font-style:normal; }
+.live { display:flex; align-items:center; gap:8px; background:rgba(0,230,118,0.1); border:1px solid rgba(0,230,118,0.3); border-radius:30px; padding:6px 16px; }
+.live-dot { width:8px; height:8px; background:var(--up); border-radius:50%; animation:blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.8)} }
+.live-txt { color:var(--up); font-family:'Tajawal',sans-serif; font-weight:800; font-size:13px; }
+.clock { color:var(--dim); font-size:13px; font-variant-numeric:tabular-nums; }
+
+/* ===== LEADERBOARD: vertical list ===== */
+.board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 28px 8px;
+  overflow: hidden;
+  position: relative;
+  z-index: 3;
+}
+
+/* Each row */
+.row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.65s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.5s ease;
+}
+.row.rank-1 {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(255,184,0,0.08) 0%, var(--surface) 50%);
+  box-shadow: 0 0 40px rgba(255,184,0,0.15), 0 0 0 1px rgba(255,184,0,0.2);
+  animation: goldGlow 2s ease-in-out infinite;
+}
+@keyframes goldGlow {
+  0%,100% { box-shadow: 0 0 40px rgba(255,184,0,0.15), 0 0 0 1px rgba(255,184,0,0.2); }
+  50% { box-shadow: 0 0 70px rgba(255,184,0,0.30), 0 0 0 1px rgba(255,184,0,0.4); }
+}
+.row.rank-2 { border-color: rgba(160,176,200,0.4); box-shadow: 0 0 20px rgba(160,176,200,0.07); }
+.row.rank-3 { border-color: rgba(205,127,50,0.4); box-shadow: 0 0 20px rgba(205,127,50,0.07); }
+
+/* Flash effect on score change */
+.row.flash { animation: scoreFlash 0.8s ease !important; }
+@keyframes scoreFlash {
+  0% { background: rgba(255,184,0,0.25); }
+  100% { background: var(--surface); }
+}
+
+/* Left: rank badge */
+.rank-col {
+  width: 64px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.2);
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rank-num {
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 900;
+  font-size: 28px;
+  transition: all 0.4s ease;
+}
+.rank-1 .rank-num { color: var(--gold); text-shadow: 0 0 20px rgba(255,184,0,0.8); }
+.rank-2 .rank-num { color: #A0B0C8; }
+.rank-3 .rank-num { color: #CD7F32; }
+.rank-4 .rank-num { color: var(--dim); }
+
+/* Middle: main content */
+.main-col {
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0 16px;
+  align-items: center;
+  overflow: hidden;
+}
+.group-ident { display:flex; align-items:center; gap:10px; grid-column:1; grid-row:1; }
+.dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; box-shadow: 0 0 8px; }
+.gname { font-family:'Tajawal',sans-serif; font-weight:900; font-size:22px; }
+
+/* Holdings inline */
+.holdings-inline {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.h-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.h-ticker { font-family:'Tajawal',sans-serif; font-weight:800; font-size:11px; color:var(--text); }
+.h-qty { font-size:10px; color:var(--dim); }
+.h-pl { font-size:10px; font-weight:700; }
+.h-pl.up { color:var(--up); }
+.h-pl.down { color:var(--down); }
+.no-stock { font-size:11px; color:var(--dim); padding:3px 0; }
+
+/* Progress bar (across full width) */
+.progress-row {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.prog-wrap { width: 120px; }
+.prog-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:2px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+/* Right: score block */
+.score-col {
+  padding: 10px 20px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 160px;
+  flex-shrink: 0;
+  height: 100%;
+}
+.score-total {
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 900;
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: all 0.4s ease;
+}
+.rank-1 .score-total { color: var(--gold); }
+.rank-2 .score-total { color: #A0B0C8; }
+.rank-3 .score-total { color: #CD7F32; }
+.rank-4 .score-total { color: var(--text); }
+.score-sub { display:flex; gap:10px; justify-content:center; margin-top:4px; }
+.score-sub span { font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums; }
+.score-sub span b { color:var(--text); }
+
+/* ===== NOTIFICATION ===== */
+.notif {
+  position: fixed;
+  top: 70px; left: 50%;
+  transform: translateX(-50%) translateY(-30px) scale(0.85);
+  background: linear-gradient(135deg, var(--gold), #FFD54F);
+  color: #1a0f00;
+  font-family: 'Tajawal',sans-serif; font-weight:900; font-size:26px;
+  padding: 16px 44px;
+  border-radius: 60px;
+  box-shadow: 0 12px 60px rgba(255,184,0,0.6);
+  z-index: 200; opacity:0;
+  transition: all 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events:none; white-space:nowrap;
+}
+.notif.show { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+
+/* ===== BOTTOM TICKER ===== */
+.bottom {
+  height: 44px;
+  background: rgba(9,19,32,0.9);
+  border-top: 1px solid var(--border);
+  display: flex; align-items:center; overflow:hidden; padding:0 16px; gap:12px;
+  flex-shrink:0;
+}
+.b-label { color:var(--gold); font-family:'Tajawal',sans-serif; font-weight:800; font-size:11px; white-space:nowrap; flex-shrink:0; }
+.b-track { display:flex; gap:28px; white-space:nowrap; animation:scrollRtl 45s linear infinite; padding-right:100%; }
+@keyframes scrollRtl { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+.b-item { display:flex; align-items:center; gap:5px; font-family:'Tajawal',sans-serif; font-weight:700; font-size:12px; color:var(--text); }
+.b-name { color:var(--dim); font-size:10px; }
+.b-chg { font-size:10px; }
+.up { color:var(--up); }
+.down { color:var(--down); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">بورصة <em>تألق</em></div>
+  <div class="live"><div class="live-dot"></div><span class="live-txt">نتائج مباشرة</span></div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="board" id="board"></div>
+<div class="notif" id="notif"></div>
+
+<div class="bottom">
+  <div class="b-label">⚡ الأسهم</div>
+  <div class="b-track" id="ticker"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY='sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let groups=[], companies=[], holdings=[];
+
+// Audio unlock
+let audioCtx=null;
+function unlockAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+}
+['click','touchstart','keydown'].forEach(e=>document.addEventListener(e,unlockAudio));
+
+function playCheer(){
+  unlockAudio();
+  if(!audioCtx) return;
+  const notes=[523,659,784,1047,1319,1568];
+  notes.forEach((f,i)=>{
+    setTimeout(()=>{
+      try {
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.value=f; o.type='triangle';
+        g.gain.setValueAtTime(0.2,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+        o.start(); o.stop(audioCtx.currentTime+0.4);
+      } catch(e){}
+    }, i*90);
+  });
+}
+
+function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmtD(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function showNotif(txt){
+  const el=document.getElementById('notif');
+  el.textContent=txt; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3800);
+}
+
+function stockVal(gid){
+  return holdings.filter(h=>h.group_id===gid).reduce((s,h)=>{
+    const c=companies.find(c=>c.id===h.company_id);
+    return s+(c?c.current_price*h.shares_owned:0);
+  },0);
+}
+
+const rankColors=['var(--gold)','#A0B0C8','#CD7F32','#4A6070'];
+const medals=['🥇','🥈','🥉','٤'];
+
+function render(){
+  const ranked=[...groups]
+    .map(g=>({...g, sv:stockVal(g.id), total:g.balance+stockVal(g.id)}))
+    .sort((a,b)=>b.total-a.total);
+  const maxTotal=Math.max(...ranked.map(g=>g.total),1);
+
+  document.getElementById('board').innerHTML=ranked.map((g,i)=>{
+    const pct=Math.min(100,(g.total/maxTotal)*100).toFixed(1);
+    const color=rankColors[i];
+
+    const hs=holdings.filter(h=>h.group_id===g.id&&h.shares_owned>0)
+      .map(h=>{
+        const c=companies.find(c=>c.id===h.company_id);
+        if(!c) return null;
+        const pl=(c.current_price-h.avg_purchase_price)*h.shares_owned;
+        return {ticker:c.ticker, qty:h.shares_owned, pl};
+      }).filter(Boolean).sort((a,b)=>Math.abs(b.pl)-Math.abs(a.pl));
+
+    const chipsHtml = hs.length===0
+      ? `<span class="no-stock">لا توجد أسهم مملوكة حاليًا</span>`
+      : hs.map(h=>`
+          <div class="h-chip">
+            <span class="h-ticker">${h.ticker}</span>
+            <span class="h-qty">×${fmt(h.qty)}</span>
+            <span class="h-pl ${h.pl>=0?'up':'down'}">${h.pl>=0?'+':''}${fmt(h.pl)}</span>
+          </div>`).join('');
+
+    return `
+    <div class="row rank-${i+1}" data-id="${g.id}">
+      <div class="rank-col">
+        <span class="rank-num">${medals[i]}</span>
+      </div>
+      <div class="main-col">
+        <div class="group-ident">
+          <span class="dot" style="background:${g.color};box-shadow:0 0 10px ${g.color}80"></span>
+          <span class="gname">${g.name}</span>
+        </div>
+        <div class="progress-row">
+          <div class="prog-wrap">
+            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${color}"></div></div>
+          </div>
+        </div>
+        <div class="holdings-inline">${chipsHtml}</div>
+      </div>
+      <div class="score-col">
+        <div class="score-total">${fmt(g.total)}</div>
+        <div class="score-sub">
+          <span>سيولة <b>${fmt(g.balance)}</b></span>
+          <span>أسهم <b>${fmt(g.sv)}</b></span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTicker(){
+  const t=document.getElementById('ticker');
+  const items=companies.map(c=>{
+    const ch=c.current_price-c.previous_price;
+    const pct=c.previous_price?(ch/c.previous_price*100):0;
+    return `<div class="b-item"><span>${c.ticker}</span><span class="b-name">${c.name}</span><span>${fmtD(c.current_price)}</span><span class="b-chg ${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'}${Math.abs(pct).toFixed(1)}%</span></div>`;
+  }).join('');
+  t.innerHTML=items+items;
+}
+
+async function loadAll(){
+  const[{data:g},{data:c},{data:h}]=await Promise.all([
+    sb.from('groups').select('*'),
+    sb.from('companies').select('*').order('ticker'),
+    sb.from('holdings').select('*'),
+  ]);
+  groups=g||[]; companies=c||[]; holdings=h||[];
+  render(); renderTicker();
+}
+
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+setInterval(updateClock,1000); updateClock();
+loadAll();
+
+sb.channel('res:groups')
+  .on('postgres_changes',{event:'*',schema:'public',table:'groups'},payload=>{
+    if(payload.eventType==='UPDATE'){
+      const idx=groups.findIndex(g=>g.id===payload.new.id);
+      if(idx>=0){
+        const added=payload.new.balance-groups[idx].balance;
+        if(added>0){ playCheer(); showNotif(`🏆 ${payload.new.name}  +${fmt(added)} ريال!`); }
+        groups[idx]=payload.new;
+      }
+    } else if(payload.eventType==='INSERT') groups.push(payload.new);
+    else if(payload.eventType==='DELETE') groups=groups.filter(g=>g.id!==payload.old.id);
+    render();
+  }).subscribe();
+
+sb.channel('res:companies')
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},payload=>{
+    const idx=companies.findIndex(c=>c.id===payload.new.id);
+    if(idx>=0) companies[idx]=payload.new;
+    renderTicker(); render();
+  }).subscribe();
+
+sb.channel('res:holdings')
+  .on('postgres_changes',{event:'*',schema:'public',table:'holdings'},payload=>{
+    if(payload.eventType==='DELETE') holdings=holdings.filter(h=>h.id!==payload.old.id);
+    else{ const idx=holdings.findIndex(h=>h.id===payload.new.id); if(idx>=0) holdings[idx]=payload.new; else holdings.push(payload.new); }
+    render();
+  }).subscribe();
+</script>
+</body>
+</html>
