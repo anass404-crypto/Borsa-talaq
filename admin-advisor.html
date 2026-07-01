@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>المستشار المالي — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{--bg:#FFFFFF;--bg-alt:#F7F8FA;--border:#E3E6EA;--text:#1A2332;--text-dim:#6B7684;--navy:#0B2545;--gold:#C9941F;--gold-bg:#FBF3E2;--down:#D62B3C;--down-bg:#FCEAEC;--up:#0E9F5C;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{background:var(--bg-alt);color:var(--text);font-family:'Cairo',sans-serif;direction:rtl;}
+  body{padding:18px 16px 50px;max-width:480px;margin:0 auto;}
+
+  .brand{font-family:'Tajawal',sans-serif;font-weight:900;font-size:20px;color:var(--navy);text-align:center;margin-bottom:2px;}
+  .brand span{color:var(--gold);}
+  .subtitle{color:var(--text-dim);font-size:13px;text-align:center;margin-bottom:20px;}
+
+  .login-wrap{display:flex;flex-direction:column;align-items:center;padding-top:60px;}
+  .login-card{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:26px 20px;width:100%;max-width:340px;}
+  .field-label{font-size:12.5px;color:var(--text-dim);margin-bottom:6px;display:block;font-weight:600;}
+  input[type="text"],input[type="number"],input[type="password"],select{width:100%;background:var(--bg-alt);border:1.5px solid var(--border);border-radius:9px;padding:12px;color:var(--text);font-family:'Cairo',sans-serif;font-size:15px;font-weight:600;outline:none;margin-bottom:10px;-webkit-appearance:none;appearance:none;}
+  input:focus,select:focus{border-color:var(--gold);}
+  .btn{width:100%;border:none;border-radius:9px;padding:13px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14.5px;cursor:pointer;margin-top:4px;}
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-danger{background:var(--down);color:#fff;}
+
+  .section{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:18px 16px;margin-bottom:16px;}
+  .section-title{font-family:'Tajawal',sans-serif;font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+
+  .group-card{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg-alt);border-radius:10px;margin-bottom:8px;border:1.5px solid var(--border);cursor:pointer;transition:all 0.15s;}
+  .group-card:active{transform:scale(0.97);}
+  .group-card.selected{border-color:var(--gold);background:var(--gold-bg);}
+  .group-left{display:flex;align-items:center;gap:10px;}
+  .group-dot{width:12px;height:12px;border-radius:50%;}
+  .group-name{font-family:'Tajawal',sans-serif;font-weight:800;font-size:15px;}
+  .group-balance{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+
+  .amount-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+  .amount-btn{background:var(--bg-alt);border:1.5px solid var(--border);border-radius:9px;padding:11px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;cursor:pointer;text-align:center;}
+  .amount-btn:active{transform:scale(0.97);}
+  .amount-btn.selected-amount{background:var(--gold-bg);border-color:var(--gold);color:var(--gold);}
+
+  .summary-box{background:var(--down-bg);border:1.5px solid var(--down);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:none;}
+  .summary-box.visible{display:block;}
+  .summary-title{font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;color:var(--down);margin-bottom:8px;}
+  .summary-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+  .summary-row .val{font-family:'Tajawal',sans-serif;font-weight:800;}
+
+  .status-msg{font-size:13px;text-align:center;margin-top:10px;min-height:16px;}
+  .status-msg.success{color:var(--up);}
+  .status-msg.error{color:var(--down);}
+
+  .hidden{display:none!important;}
+  .top-bar{display:flex;justify-content:flex-end;margin-bottom:6px;}
+  .logout-link{color:var(--text-dim);font-size:12.5px;text-decoration:underline;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- شاشة الدخول -->
+<div id="loginScreen" class="login-wrap">
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="subtitle">المستشار المالي</div>
+  <div class="login-card">
+    <label class="field-label">كلمة المرور</label>
+    <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور">
+    <button class="btn btn-primary" id="loginBtn">دخول</button>
+    <div class="status-msg error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- الشاشة الرئيسية -->
+<div id="mainScreen" class="hidden">
+  <div class="top-bar"><span class="logout-link" id="logoutBtn">تسجيل خروج</span></div>
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="subtitle">💼 المستشار المالي — خصم تكلفة الاستشارة</div>
+
+  <!-- اختيار المجموعة -->
+  <div class="section">
+    <div class="section-title">👥 اختر المجموعة</div>
+    <div id="groupsList"></div>
+  </div>
+
+  <!-- تكلفة الاستشارة -->
+  <div class="section">
+    <div class="section-title">💰 تكلفة الاستشارة</div>
+    <div class="amount-grid" id="amountGrid">
+      <div class="amount-btn" onclick="selectAmount(100)">100</div>
+      <div class="amount-btn" onclick="selectAmount(200)">200</div>
+      <div class="amount-btn" onclick="selectAmount(500)">500</div>
+      <div class="amount-btn" onclick="selectAmount(750)">750</div>
+      <div class="amount-btn" onclick="selectAmount(1000)">1,000</div>
+      <div class="amount-btn" onclick="selectAmount(2000)">2,000</div>
+    </div>
+    <label class="field-label">أو أدخل مبلغًا مخصصًا</label>
+    <input type="number" id="customAmount" placeholder="0" oninput="selectAmount(parseInt(this.value)||0,true)">
+  </div>
+
+  <!-- ملخص وتنفيذ -->
+  <div class="summary-box" id="summaryBox">
+    <div class="summary-title">⚠️ ملخص العملية — الرجاء التأكد قبل التنفيذ</div>
+    <div class="summary-row"><span>المجموعة</span><span class="val" id="sumGroup">—</span></div>
+    <div class="summary-row"><span>تكلفة الاستشارة</span><span class="val" id="sumAmount">—</span></div>
+    <div class="summary-row"><span>الرصيد قبل الخصم</span><span class="val" id="sumBefore">—</span></div>
+    <div class="summary-row"><span>الرصيد بعد الخصم</span><span class="val" id="sumAfter">—</span></div>
+  </div>
+
+  <button class="btn btn-danger" id="deductBtn" onclick="executeDeduction()">خصم تكلفة الاستشارة</button>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY='sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let groups=[];
+let selectedGroupId=null;
+let selectedAmount=0;
+
+function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+async function getSetting(key){
+  const{data}=await sb.from('app_settings').select('value').eq('key',key).single();
+  return data?data.value:null;
+}
+
+// تسجيل الدخول
+document.getElementById('loginBtn').addEventListener('click',async()=>{
+  const val=document.getElementById('passwordInput').value;
+  const correct=await getSetting('password_competitions');
+  if(val===correct){
+    sessionStorage.setItem('nadi_auth_password_competitions','1');    showMainScreen();
+  } else {
+    document.getElementById('loginError').textContent='كلمة المرور غير صحيحة';
+  }
+});
+document.getElementById('passwordInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+document.getElementById('logoutBtn').addEventListener('click',()=>{
+  sessionStorage.removeItem('nadi_auth_password_competitions');
+  document.getElementById('mainScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+});
+
+async function showMainScreen(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  await loadGroups();
+}
+
+async function loadGroups(){
+  const{data}=await sb.from('groups').select('*').order('name');
+  groups=data||[];
+  renderGroups();
+}
+
+function renderGroups(){
+  const list=document.getElementById('groupsList');
+  list.innerHTML=groups.map(g=>`
+    <div class="group-card ${selectedGroupId===g.id?'selected':''}" onclick="selectGroup('${g.id}')">
+      <div class="group-left">
+        <span class="group-dot" style="background:${g.color}"></span>
+        <span class="group-name">${g.name}</span>
+      </div>
+      <span class="group-balance">${fmt(g.balance)} ر.س</span>
+    </div>`).join('');
+}
+
+function selectGroup(id){
+  selectedGroupId=id;
+  renderGroups();
+  updateSummary();
+}
+
+function selectAmount(amount,fromInput=false){
+  selectedAmount=amount;
+  document.querySelectorAll('.amount-btn').forEach(btn=>btn.classList.remove('selected-amount'));
+  if(!fromInput){
+    event.target.classList.add('selected-amount');
+    document.getElementById('customAmount').value='';
+  }
+  updateSummary();
+}
+
+function updateSummary(){
+  const box=document.getElementById('summaryBox');
+  if(!selectedGroupId||!selectedAmount){box.classList.remove('visible');return;}
+  const g=groups.find(g=>g.id===selectedGroupId);
+  if(!g)return;
+  box.classList.add('visible');
+  document.getElementById('sumGroup').textContent=g.name;
+  document.getElementById('sumAmount').textContent=fmt(selectedAmount)+' ر.س';
+  document.getElementById('sumBefore').textContent=fmt(g.balance)+' ر.س';
+  const after=g.balance-selectedAmount;
+  const afterEl=document.getElementById('sumAfter');
+  afterEl.textContent=fmt(Math.max(0,after))+' ر.س';
+  afterEl.style.color=after<0?'var(--down)':'inherit';
+}
+
+async function executeDeduction(){
+  const statusEl=document.getElementById('statusMsg');
+  if(!selectedGroupId){statusEl.textContent='اختر المجموعة أولاً';statusEl.className='status-msg error';return;}
+  if(!selectedAmount||selectedAmount<=0){statusEl.textContent='أدخل مبلغ الاستشارة';statusEl.className='status-msg error';return;}
+  const g=groups.find(g=>g.id===selectedGroupId);
+  if(!g)return;
+  if(g.balance<selectedAmount){statusEl.textContent='الرصيد غير كافٍ لخصم هذا المبلغ';statusEl.className='status-msg error';return;}
+
+  const newBalance=g.balance-selectedAmount;
+  await sb.from('groups').update({balance:newBalance}).eq('id',selectedGroupId);
+  await sb.from('admin_actions').insert({group_id:selectedGroupId,amount:-selectedAmount,reason:'تكلفة استشارة مالية',added_by:'المستشار المالي'});
+
+  statusEl.textContent=`✅ تم خصم ${fmt(selectedAmount)} ر.س من ${g.name} — تكلفة الاستشارة`;
+  statusEl.className='status-msg success';
+
+  // إعادة تعيين
+  selectedGroupId=null; selectedAmount=0;
+  document.querySelectorAll('.amount-btn').forEach(b=>b.classList.remove('selected-amount'));
+  document.getElementById('customAmount').value='';
+  document.getElementById('summaryBox').classList.remove('visible');
+  await loadGroups();
+}
+
+sb.channel('public:groups_advisor')
+  .on('postgres_changes',{event:'*',schema:'public',table:'groups'},()=>{loadGroups();}).subscribe();
+
+if(sessionStorage.getItem('nadi_auth_password_competitions')==='1'){showMainScreen();}
+</script>
+</body>
+</html>
