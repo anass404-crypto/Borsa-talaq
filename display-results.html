@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نتائج المجموعات — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #050C18;
+    --surface: #0C1826;
+    --surface-2: #132030;
+    --border: #1A2C40;
+    --text: #E8EAED;
+    --text-dim: #5A6B80;
+    --up: #00E676;
+    --up-dim: rgba(0,230,118,0.15);
+    --down: #FF3D5A;
+    --down-dim: rgba(255,61,90,0.15);
+    --gold: #FFB800;
+    --gold-dim: rgba(255,184,0,0.2);
+    --silver: #A0B0C8;
+    --bronze: #CD7F32;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    direction: rtl;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(90deg, #0B2545 0%, #050C18 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand { font-family:'Tajawal',sans-serif; font-weight:900; font-size:22px; color:#fff; }
+  .brand span { color:var(--gold); }
+  .header-right { display:flex; align-items:center; gap:20px; }
+  .live-dot { width:8px; height:8px; background:var(--up); border-radius:50%; animation:blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .live-text { color:var(--up); font-family:'Tajawal',sans-serif; font-weight:700; font-size:12px; display:flex; align-items:center; gap:6px; }
+  .clock { color:var(--text-dim); font-size:12px; font-variant-numeric:tabular-nums; }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    height: calc(100vh - 52px - 52px);
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.7s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.5s ease, border-color 0.5s ease;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+  .card.rank-1 { border-color: var(--gold); }
+  .card.rank-1::before { background: radial-gradient(ellipse at top, rgba(255,184,0,0.10) 0%, transparent 70%); opacity:1; }
+  .card.rank-1 { box-shadow: 0 0 50px rgba(255,184,0,0.2), inset 0 0 30px rgba(255,184,0,0.05); animation: goldPulse 2.5s ease-in-out infinite; }
+  @keyframes goldPulse { 0%,100%{box-shadow:0 0 50px rgba(255,184,0,0.2),inset 0 0 30px rgba(255,184,0,0.05)} 50%{box-shadow:0 0 80px rgba(255,184,0,0.4),inset 0 0 40px rgba(255,184,0,0.1)} }
+  .card.rank-2 { border-color: var(--silver); box-shadow: 0 0 20px rgba(160,176,200,0.1); }
+  .card.rank-3 { border-color: var(--bronze); box-shadow: 0 0 20px rgba(205,127,50,0.1); }
+
+  /* Rank + name row */
+  .card-top { display:flex; align-items:center; gap:12px; }
+  .rank-badge {
+    width:42px; height:42px;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Tajawal',sans-serif; font-weight:900; font-size:22px;
+    flex-shrink:0;
+    transition: all 0.4s ease;
+  }
+  .rank-1 .rank-badge { background:var(--gold); color:#1a0f00; box-shadow:0 0 20px rgba(255,184,0,0.5); }
+  .rank-2 .rank-badge { background:var(--silver); color:#0a1520; }
+  .rank-3 .rank-badge { background:var(--bronze); color:#fff; }
+  .rank-4 .rank-badge { background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border); }
+  .group-name { font-family:'Tajawal',sans-serif; font-weight:900; font-size:24px; }
+  .group-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+  /* Total score — big number */
+  .total-score {
+    font-family:'Tajawal',sans-serif;
+    font-weight:900;
+    font-size:38px;
+    font-variant-numeric:tabular-nums;
+    color:var(--gold);
+    line-height:1;
+    transition: all 0.5s ease;
+  }
+  .rank-2 .total-score { color:var(--silver); }
+  .rank-3 .total-score { color:var(--bronze); }
+  .rank-4 .total-score { color:var(--text); }
+  .total-label { font-size:11px; color:var(--text-dim); margin-bottom:2px; }
+
+  /* Sub scores */
+  .sub-scores { display:flex; gap:8px; }
+  .sub-item { flex:1; background:var(--surface-2); border-radius:10px; padding:8px 10px; border:1px solid var(--border); }
+  .sub-label { font-size:9px; color:var(--text-dim); margin-bottom:3px; }
+  .sub-value { font-family:'Tajawal',sans-serif; font-weight:800; font-size:14px; font-variant-numeric:tabular-nums; }
+
+  /* Holdings list */
+  .holdings-section { flex:1; min-height:0; overflow:hidden; }
+  .holdings-title { font-size:10px; color:var(--text-dim); font-weight:600; margin-bottom:5px; }
+  .holdings-list { display:flex; flex-direction:column; gap:3px; overflow-y:auto; max-height:100%; }
+  .holding-row {
+    display:grid;
+    grid-template-columns: 1.2fr 0.6fr 0.8fr 1fr;
+    gap:4px;
+    align-items:center;
+    padding:4px 8px;
+    border-radius:7px;
+    background:var(--surface-2);
+    font-size:10px;
+  }
+  .holding-ticker { font-family:'Tajawal',sans-serif; font-weight:800; font-size:11px; color:var(--text); }
+  .holding-qty { color:var(--text-dim); font-variant-numeric:tabular-nums; }
+  .holding-avg { color:var(--text-dim); font-variant-numeric:tabular-nums; }
+  .holding-pl { font-weight:700; font-variant-numeric:tabular-nums; text-align:left; }
+  .holding-pl.up { color:var(--up); }
+  .holding-pl.down { color:var(--down); }
+  .no-holdings { text-align:center; color:var(--text-dim); font-size:11px; padding:8px; }
+
+  /* Progress bar */
+  .progress-bar { height:5px; background:var(--surface-2); border-radius:3px; overflow:hidden; margin-top:2px; }
+  .progress-fill { height:100%; border-radius:3px; transition:width 1s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Notification */
+  .notif {
+    position:fixed; top:62px; left:50%; transform:translateX(-50%) scale(0.8);
+    background:linear-gradient(135deg, var(--gold), #FFD54F);
+    color:#1a0f00;
+    font-family:'Tajawal',sans-serif; font-weight:900; font-size:22px;
+    padding:14px 36px; border-radius:50px;
+    box-shadow:0 8px 50px rgba(255,184,0,0.5);
+    z-index:100; opacity:0;
+    transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events:none; white-space:nowrap;
+  }
+  .notif.show { opacity:1; transform:translateX(-50%) scale(1); }
+
+  /* Bottom bar */
+  .bottom-bar {
+    height:52px; background:var(--surface);
+    border-top:1px solid var(--border);
+    display:flex; align-items:center; overflow:hidden; padding:0 16px; gap:14px;
+  }
+  .bar-label { color:var(--gold); font-family:'Tajawal',sans-serif; font-weight:800; font-size:11px; white-space:nowrap; flex-shrink:0; }
+  .ticker-track { display:flex; gap:28px; white-space:nowrap; animation:scrollRtl 45s linear infinite; padding-right:100%; }
+  @keyframes scrollRtl { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+  .t-item { display:flex; align-items:center; gap:6px; font-family:'Tajawal',sans-serif; font-weight:700; font-size:12px; color:var(--text); }
+  .t-name { color:var(--text-dim); font-size:10px; }
+  .t-chg { font-size:10px; }
+  .up { color:var(--up); }
+  .down { color:var(--down); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="header-right">
+    <div class="live-text"><div class="live-dot"></div>مباشر</div>
+    <div class="clock" id="clock"></div>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+<div class="notif" id="notif"></div>
+
+<div class="bottom-bar">
+  <div class="bar-label">⚡ الأسهم</div>
+  <div class="ticker-track" id="ticker"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY='sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let groups=[], companies=[], holdings=[];
+
+function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmtD(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function playCheer(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [[523,0],[659,0.1],[784,0.2],[1047,0.3],[1319,0.4]].forEach(([f,t])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=f;o.type='triangle';
+      g.gain.setValueAtTime(0.18,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.35);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.35);
+    });
+  }catch(e){}
+}
+
+function showNotif(text){
+  const el=document.getElementById('notif');
+  el.textContent=text;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+function stockValue(gid){
+  return holdings.filter(h=>h.group_id===gid).reduce((s,h)=>{
+    const c=companies.find(c=>c.id===h.company_id);
+    return s+(c?c.current_price*h.shares_owned:0);
+  },0);
+}
+
+function render(){
+  const maxTotal=Math.max(...groups.map(g=>g.balance+stockValue(g.id)),1);
+  const ranked=[...groups]
+    .map(g=>({...g,sv:stockValue(g.id),total:g.balance+stockValue(g.id)}))
+    .sort((a,b)=>b.total-a.total);
+
+  const medals=['🥇','🥈','🥉','٤'];
+  const rankColors=['var(--gold)','var(--silver)','var(--bronze)','var(--text-dim)'];
+
+  document.getElementById('grid').innerHTML=ranked.map((g,i)=>{
+    const pct=((g.total/maxTotal)*100).toFixed(1);
+    const hs=holdings.filter(h=>h.group_id===g.id&&h.shares_owned>0)
+      .map(h=>{
+        const c=companies.find(c=>c.id===h.company_id);
+        if(!c)return null;
+        const pl=(c.current_price-h.avg_purchase_price)*h.shares_owned;
+        const plPct=h.avg_purchase_price?((c.current_price-h.avg_purchase_price)/h.avg_purchase_price*100):0;
+        return {ticker:c.ticker,qty:h.shares_owned,avg:h.avg_purchase_price,pl,plPct};
+      }).filter(Boolean).sort((a,b)=>Math.abs(b.pl)-Math.abs(a.pl));
+
+    const holdingsHtml=hs.length===0
+      ?`<div class="no-holdings">لا توجد أسهم مملوكة</div>`
+      :hs.map(h=>`
+        <div class="holding-row">
+          <span class="holding-ticker">${h.ticker}</span>
+          <span class="holding-qty">${fmt(h.qty)}</span>
+          <span class="holding-avg">${fmtD(h.avg)}</span>
+          <span class="holding-pl ${h.pl>=0?'up':'down'}">${h.pl>=0?'+':''}${fmt(h.pl)} (${h.pl>=0?'+':''}${h.plPct.toFixed(1)}%)</span>
+        </div>`).join('');
+
+    return `
+    <div class="card rank-${i+1}">
+      <div class="card-top">
+        <div class="rank-badge">${medals[i]}</div>
+        <span class="group-dot" style="background:${g.color}"></span>
+        <span class="group-name">${g.name}</span>
+      </div>
+      <div>
+        <div class="total-label">إجمالي المحفظة</div>
+        <div class="total-score">${fmt(g.total)} <span style="font-size:16px;color:var(--text-dim)">ر.س</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${rankColors[i]}"></div></div>
+      </div>
+      <div class="sub-scores">
+        <div class="sub-item"><div class="sub-label">السيولة النقدية</div><div class="sub-value">${fmt(g.balance)}</div></div>
+        <div class="sub-item"><div class="sub-label">قيمة الأسهم</div><div class="sub-value">${fmt(g.sv)}</div></div>
+      </div>
+      <div class="holdings-section">
+        <div class="holdings-title">📋 الأسهم المملوكة — السهم / الكمية / سعر الشراء / الربح والخسارة</div>
+        <div class="holdings-list">${holdingsHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTicker(){
+  const t=document.getElementById('ticker');
+  const items=companies.map(c=>{
+    const ch=c.current_price-c.previous_price;
+    const pct=c.previous_price?(ch/c.previous_price*100):0;
+    return `<div class="t-item"><span>${c.ticker}</span><span class="t-name">${c.name}</span><span>${fmtD(c.current_price)}</span><span class="t-chg ${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'}${Math.abs(pct).toFixed(1)}%</span></div>`;
+  }).join('');
+  t.innerHTML=items+items;
+}
+
+async function loadAll(){
+  const[{data:g},{data:c},{data:h}]=await Promise.all([
+    sb.from('groups').select('*'),
+    sb.from('companies').select('*').order('ticker'),
+    sb.from('holdings').select('*'),
+  ]);
+  groups=g||[];companies=c||[];holdings=h||[];
+  render();renderTicker();
+}
+
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+setInterval(updateClock,1000);updateClock();
+
+document.addEventListener('click',()=>{try{new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},{once:true});
+
+loadAll();
+
+sb.channel('res:groups')
+  .on('postgres_changes',{event:'*',schema:'public',table:'groups'},payload=>{
+    if(payload.eventType==='UPDATE'){
+      const idx=groups.findIndex(g=>g.id===payload.new.id);
+      if(idx>=0){
+        const added=payload.new.balance-groups[idx].balance;
+        if(added>0){playCheer();showNotif(`🏆 ${payload.new.name}  +${fmt(added)} ريال!`);}
+        groups[idx]=payload.new;
+      }
+    }else if(payload.eventType==='INSERT')groups.push(payload.new);
+    else if(payload.eventType==='DELETE')groups=groups.filter(g=>g.id!==payload.old.id);
+    render();
+  }).subscribe();
+
+sb.channel('res:companies')
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},payload=>{
+    const idx=companies.findIndex(c=>c.id===payload.new.id);
+    if(idx>=0)companies[idx]=payload.new;
+    renderTicker();render();
+  }).subscribe();
+
+sb.channel('res:holdings')
+  .on('postgres_changes',{event:'*',schema:'public',table:'holdings'},payload=>{
+    if(payload.eventType==='DELETE')holdings=holdings.filter(h=>h.id!==payload.old.id);
+    else{const idx=holdings.findIndex(h=>h.id===payload.new.id);if(idx>=0)holdings[idx]=payload.new;else holdings.push(payload.new);}
+    render();
+  }).subscribe();
+</script>
+</body>
+</html>
