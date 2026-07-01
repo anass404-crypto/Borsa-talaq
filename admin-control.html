@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>إدارة المسابقة — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-alt: #F7F8FA;
+    --border: #E3E6EA;
+    --text: #1A2332;
+    --text-dim: #6B7684;
+    --navy: #0B2545;
+    --gold: #C9941F;
+    --up: #0E9F5C;
+    --down: #D62B3C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg-alt); color: var(--text); font-family: 'Cairo', sans-serif; direction: rtl; }
+  body { padding: 18px 16px 50px; max-width: 480px; margin: 0 auto; }
+
+  .brand { font-family: 'Tajawal', sans-serif; font-weight: 900; font-size: 20px; color: var(--navy); margin-bottom: 2px; text-align: center; }
+  .brand span { color: var(--gold); }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; text-align: center; }
+
+  .section { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; margin-bottom: 16px; }
+  .section-title { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+  .section.danger { border-color: var(--down); }
+  .section.danger .section-title { color: var(--down); }
+
+  .field-label { font-size: 12.5px; color: var(--text-dim); margin-bottom: 6px; display: block; font-weight: 600; }
+  input[type="text"], input[type="number"], input[type="password"], select {
+    width: 100%; background: var(--bg-alt); border: 1.5px solid var(--border); border-radius: 9px;
+    padding: 12px 12px; color: var(--text); font-family: 'Cairo', sans-serif; font-size: 15px;
+    font-weight: 600; outline: none; margin-bottom: 10px; -webkit-appearance: none; appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--gold); }
+
+  .btn { width: 100%; border: none; border-radius: 9px; padding: 13px; font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 14.5px; cursor: pointer; margin-top: 4px; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-danger { background: var(--down); color: #fff; }
+  .btn-secondary { background: var(--bg-alt); color: var(--text); border: 1px solid var(--border); }
+  .btn-sm { padding: 9px; font-size: 13px; }
+  .btn:disabled { opacity: 0.4; }
+
+  .group-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-alt); border-radius: 9px; }
+  .group-row input[type="text"] { margin-bottom: 0; flex: 1; }
+  .group-row .balance-tag { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .remove-btn { background: var(--down); color: #fff; border: none; border-radius: 7px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--bg-alt); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 14px; font-weight: 600; }
+  .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background-color: var(--border); border-radius: 26px; transition: 0.2s; }
+  .slider:before { position: absolute; content: ""; height: 20px; width: 20px; right: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.2s; }
+  input:checked + .slider { background-color: var(--up); }
+  input:checked + .slider:before { transform: translateX(-20px); }
+
+  .status-msg { font-size: 13px; text-align: center; margin-top: 8px; min-height: 16px; }
+  .status-msg.success { color: var(--up); }
+  .status-msg.error { color: var(--down); }
+
+  .hidden { display: none !important; }
+  .login-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 60px; }
+  .login-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 26px 20px; width: 100%; max-width: 340px; }
+
+  .confirm-text { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.6; }
+  .top-bar { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+  .logout-link { color: var(--text-dim); font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="subtitle">إدارة المسابقة</div>
+  <div class="login-card">
+    <label class="field-label">كلمة المرور</label>
+    <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور">
+    <button class="btn btn-primary" id="loginBtn">دخول</button>
+    <div class="status-msg error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="mainScreen" class="hidden">
+  <div class="top-bar"><span class="logout-link" id="logoutBtn">تسجيل خروج</span></div>
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="subtitle">إدارة المسابقة</div>
+
+  <div class="section">
+    <div class="section-title">👥 المجموعات</div>
+    <div id="groupsList"></div>
+    <button class="btn btn-secondary btn-sm" id="addGroupBtn">+ إضافة مجموعة جديدة</button>
+    <button class="btn btn-primary" id="saveGroupsBtn" style="margin-top:12px;">حفظ التعديلات على المجموعات</button>
+    <div class="status-msg" id="groupsStatus"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">➖ خصم رصيد (مخالفة)</div>
+    <label class="field-label">المجموعة</label>
+    <select id="deductGroupSelect"></select>
+    <label class="field-label">المبلغ المراد خصمه</label>
+    <input type="number" id="deductAmountInput" placeholder="0">
+    <button class="btn btn-danger" id="deductBtn">تنفيذ الخصم</button>
+    <div class="status-msg" id="deductStatus"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🖥️ عناصر شاشة العرض</div>
+    <div class="toggle-row">
+      <span class="toggle-label">شريط الأخبار</span>
+      <label class="switch"><input type="checkbox" id="toggleNews" checked><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">المؤشر العام</span>
+      <label class="switch"><input type="checkbox" id="toggleIndex" checked><span class="slider"></span></label>
+    </div>
+    <div class="status-msg" id="displaySettingsStatus"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🔑 كلمات المرور</div>
+    <label class="field-label">كلمة مرور مشرف المنافسات</label>
+    <input type="text" id="passCompetitions">
+    <label class="field-label">كلمة مرور المؤسسة المالية</label>
+    <input type="text" id="passFinance">
+    <label class="field-label">كلمة مرور إدارة المسابقة (الحالية)</label>
+    <input type="text" id="passAdmin">
+    <button class="btn btn-primary" id="savePasswordsBtn">حفظ كلمات المرور</button>
+    <div class="status-msg" id="passwordsStatus"></div>
+  </div>
+
+  <div class="section danger">
+    <div class="section-title">🔄 تصفير المسابقة</div>
+    <div class="confirm-text">
+      هذا الإجراء سيعيد كل المجموعات لرصيد 10,000 ر.س، يحذف كل المحافظ والأسهم المملوكة، ويعيد أسعار الأسهم لقيمها الأساسية. سجل العمليات السابق سيُحذف أيضًا. <b>هذا الإجراء لا يمكن التراجع عنه.</b>
+    </div>
+    <button class="btn btn-danger" id="resetBtn">تصفير المسابقة الآن</button>
+    <div class="status-msg" id="resetStatus"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const GROUP_COLORS = ['#0B2545', '#0E9F5C', '#C9941F', '#D62B3C', '#6B7684', '#14365E', '#7B2D8B', '#1A6B5E', '#B5460F', '#1A3A6B'];
+let groups = [];
+
+function fmt(n) { return Number(n).toLocaleString('en-US'); }
+
+async function getSetting(key) {
+  const { data } = await sb.from('app_settings').select('value').eq('key', key).single();
+  return data ? data.value : null;
+}
+async function setSetting(key, value) {
+  await sb.from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() });
+}
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const val = document.getElementById('passwordInput').value;
+  const correct = await getSetting('password_admin');
+  if (val === correct) {
+    sessionStorage.setItem('nadi_auth_password_admin', '1');
+    showMainScreen();
+  } else {
+    document.getElementById('loginError').textContent = 'كلمة المرور غير صحيحة';
+  }
+});
+document.getElementById('passwordInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('nadi_auth_password_admin');
+  document.getElementById('mainScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+});
+
+async function showMainScreen() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  await loadEverything();
+}
+
+async function loadEverything() {
+  const { data: g } = await sb.from('groups').select('*').order('name');
+  groups = g || [];
+  renderGroupsList();
+  renderDeductSelect();
+
+  const newsVal = await getSetting('show_news_bar');
+  const indexVal = await getSetting('show_market_index');
+  document.getElementById('toggleNews').checked = newsVal !== 'false';
+  document.getElementById('toggleIndex').checked = indexVal !== 'false';
+
+  document.getElementById('passCompetitions').value = await getSetting('password_competitions') || '';
+  document.getElementById('passFinance').value = await getSetting('password_finance') || '';
+  document.getElementById('passAdmin').value = await getSetting('password_admin') || '';
+}
+
+function renderGroupsList() {
+  const list = document.getElementById('groupsList');
+  list.innerHTML = groups.map((g) => `
+    <div class="group-row" data-id="${g.id}">
+      <input type="text" value="${g.name}" data-field="name">
+      <span class="balance-tag">${fmt(g.balance)} ر.س</span>
+      <button class="remove-btn" data-remove="${g.id}">×</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      groups = groups.filter(g => g.id !== btn.dataset.remove);
+      renderGroupsList();
+    });
+  });
+}
+
+document.getElementById('addGroupBtn').addEventListener('click', () => {
+  const colorIndex = groups.length % GROUP_COLORS.length;
+  groups.push({ id: 'new-' + Date.now(), name: 'مجموعة جديدة', balance: 10000, color: GROUP_COLORS[colorIndex], isNew: true });
+  renderGroupsList();
+});
+
+document.getElementById('saveGroupsBtn').addEventListener('click', async () => {
+  const status = document.getElementById('groupsStatus');
+  status.textContent = 'جاري الحفظ...';
+  status.className = 'status-msg';
+
+  try {
+    const rows = document.querySelectorAll('#groupsList .group-row');
+
+    for (const row of rows) {
+      const id = row.dataset.id;
+      const name = row.querySelector('[data-field="name"]').value.trim();
+      if (!name) continue;
+
+      const group = groups.find(g => g.id === id);
+      if (group && group.isNew) {
+        const { error } = await sb.from('groups').insert({ name, balance: group.balance, color: group.color || '#0B2545' });
+        if (error) throw new Error('خطأ في إضافة المجموعة: ' + error.message);
+      } else {
+        const { error } = await sb.from('groups').update({ name }).eq('id', id);
+        if (error) throw new Error('خطأ في تحديث المجموعة: ' + error.message);
+      }
+    }
+
+    const { data: dbGroups } = await sb.from('groups').select('id');
+    const currentIds = new Set(groups.filter(g => !g.isNew).map(g => g.id));
+    for (const dbg of (dbGroups || [])) {
+      if (!currentIds.has(dbg.id)) {
+        await sb.from('groups').delete().eq('id', dbg.id);
+      }
+    }
+
+    status.textContent = '✅ تم الحفظ بنجاح';
+    status.className = 'status-msg success';
+    await loadEverything();
+  } catch (err) {
+    status.textContent = '❌ حدث خطأ، حاول مرة أخرى';
+    status.className = 'status-msg error';
+    console.error(err);
+  }
+});
+
+function renderDeductSelect() {
+  const sel = document.getElementById('deductGroupSelect');
+  sel.innerHTML = '<option value="">اختر المجموعة...</option>' + groups.map(g => `<option value="${g.id}">${g.name} (${fmt(g.balance)} ر.س)</option>`).join('');
+}
+
+document.getElementById('deductBtn').addEventListener('click', async () => {
+  const status = document.getElementById('deductStatus');
+  const groupId = document.getElementById('deductGroupSelect').value;
+  const amount = parseFloat(document.getElementById('deductAmountInput').value);
+
+  if (!groupId || !amount || amount <= 0) {
+    status.textContent = 'اختر المجموعة وأدخل مبلغًا صحيحًا';
+    status.className = 'status-msg error';
+    return;
+  }
+
+  const group = groups.find(g => g.id === groupId);
+  const newBalance = Math.max(0, group.balance - amount);
+
+  await sb.from('groups').update({ balance: newBalance }).eq('id', groupId);
+  await sb.from('admin_actions').insert({ group_id: groupId, amount: -amount, reason: 'خصم مخالفة', added_by: 'إدارة المسابقة' });
+
+  status.textContent = `✅ تم خصم ${fmt(amount)} ر.س من ${group.name}`;
+  status.className = 'status-msg success';
+  document.getElementById('deductAmountInput').value = '';
+  await loadEverything();
+});
+
+document.getElementById('toggleNews').addEventListener('change', async (e) => {
+  await setSetting('show_news_bar', e.target.checked ? 'true' : 'false');
+  showDisplayStatus();
+});
+document.getElementById('toggleIndex').addEventListener('change', async (e) => {
+  await setSetting('show_market_index', e.target.checked ? 'true' : 'false');
+  showDisplayStatus();
+});
+function showDisplayStatus() {
+  const status = document.getElementById('displaySettingsStatus');
+  status.textContent = '✅ تم الحفظ، التغيير ينعكس فورًا بشاشة العرض';
+  status.className = 'status-msg success';
+  setTimeout(() => { status.textContent = ''; }, 3000);
+}
+
+document.getElementById('savePasswordsBtn').addEventListener('click', async () => {
+  const status = document.getElementById('passwordsStatus');
+  const pComp = document.getElementById('passCompetitions').value.trim();
+  const pFin = document.getElementById('passFinance').value.trim();
+  const pAdmin = document.getElementById('passAdmin').value.trim();
+
+  if (!pComp || !pFin || !pAdmin) {
+    status.textContent = 'لا يمكن ترك كلمة مرور فاضية';
+    status.className = 'status-msg error';
+    return;
+  }
+
+  await setSetting('password_competitions', pComp);
+  await setSetting('password_finance', pFin);
+  await setSetting('password_admin', pAdmin);
+
+  status.textContent = '✅ تم حفظ كلمات المرور بنجاح';
+  status.className = 'status-msg success';
+});
+
+document.getElementById('resetBtn').addEventListener('click', async () => {
+  const sure = confirm('هل أنت متأكد من تصفير المسابقة؟ هذا الإجراء لا يمكن التراجع عنه.');
+  if (!sure) return;
+  const sureAgain = confirm('تأكيد أخير: سيتم حذف كل المحافظ والأرصدة الحالية. متابعة؟');
+  if (!sureAgain) return;
+
+  const status = document.getElementById('resetStatus');
+  status.textContent = 'جاري التصفير...';
+  status.className = 'status-msg';
+
+  try {
+    await sb.from('holdings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await sb.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await sb.from('admin_actions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await sb.from('price_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+    for (const g of groups) {
+      if (!g.isNew) await sb.from('groups').update({ balance: 10000 }).eq('id', g.id);
+    }
+
+    const { data: companies } = await sb.from('companies').select('id, ticker');
+    const basePrices = {
+      'WAHA': 85.40, 'KGUF': 42.10, 'ETSL': 38.75, 'GHAD': 22.30, 'SAHR': 56.90,
+      'PKEM': 33.15, 'MMLK': 19.60, 'TMWN': 27.45, 'ISMT': 64.20, 'SNAA': 71.80,
+      'AQAR': 15.90, 'TMRN': 24.55, 'TAWN': 29.70, 'RAAYA': 48.30, 'GHIDA': 12.85,
+    };
+    for (const c of (companies || [])) {
+      const price = basePrices[c.ticker];
+      if (price) await sb.from('companies').update({
+        current_price: price,
+        previous_price: price,
+        peak_price: price  // ← إعادة القمة التاريخية للصفر أيضًا
+      }).eq('id', c.id);
+    }
+
+    status.textContent = '✅ تمت تصفير المسابقة بنجاح';
+    status.className = 'status-msg success';
+    await loadEverything();
+  } catch (err) {
+    status.textContent = '❌ حدث خطأ أثناء التصفير';
+    status.className = 'status-msg error';
+    console.error(err);
+  }
+});
+
+if (sessionStorage.getItem('nadi_auth_password_admin') === '1') {
+  showMainScreen();
+}
+</script>
+</body>
+</html>
