@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>بوابة التحكم — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-alt: #F7F8FA;
+    --border: #E3E6EA;
+    --text: #1A2332;
+    --text-dim: #6B7684;
+    --navy: #0B2545;
+    --gold: #C9941F;
+    --up: #0E9F5C;
+    --down: #D62B3C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg-alt);
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    min-height: 100vh;
+    direction: rtl;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 18px;
+  }
+
+  .brand { font-family: 'Tajawal', sans-serif; font-weight: 900; font-size: 26px; color: var(--navy); margin-bottom: 4px; text-align: center; }
+  .brand span { color: var(--gold); }
+  .subtitle { color: var(--text-dim); font-size: 14px; margin-bottom: 32px; text-align: center; }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .portal-card {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .portal-card:active { transform: scale(0.97); background: var(--bg-alt); }
+  .portal-icon { font-size: 34px; margin-bottom: 10px; }
+  .portal-title { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 15px; margin-bottom: 4px; }
+  .portal-desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+  .portal-card.display-card { grid-column: span 3; flex-direction: row; justify-content: center; gap: 10px; padding: 16px; }
+  .portal-card.display-card .portal-icon { margin-bottom: 0; font-size: 22px; }
+  .portal-card.admin-card { grid-column: span 3; flex-direction: row; justify-content: center; gap: 10px; padding: 16px; border-color: var(--gold); }
+  .portal-card.admin-card .portal-icon { margin-bottom: 0; font-size: 22px; }
+  .portal-card.admin-card .portal-desc { display: none; }
+
+  /* ===== Password modal ===== */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(11,37,69,0.5);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    z-index: 10;
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--bg);
+    border-radius: 16px;
+    padding: 26px 22px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .modal-title { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 17px; margin-bottom: 14px; text-align: center; }
+  input[type="password"] {
+    width: 100%;
+    background: var(--bg-alt);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 15px 14px;
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    outline: none;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+  }
+  input:focus { border-color: var(--gold); }
+  .btn {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    background: var(--navy);
+    color: #fff;
+  }
+  .btn:active { transform: scale(0.97); }
+  .modal-error { color: var(--down); font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+  .modal-cancel { display: block; text-align: center; margin-top: 12px; color: var(--text-dim); font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="brand">بورصة <span>تألق</span></div>
+<div class="subtitle">بوابة التحكم بالمسابقة</div>
+
+<div class="cards-grid">
+  <div class="portal-card" data-target="admin-competitions.html" data-pass-key="password_competitions">
+    <div class="portal-icon">🏆</div>
+    <div class="portal-title">مشرف المنافسات</div>
+    <div class="portal-desc">إضافة الأرصدة للمجموعات</div>
+  </div>
+
+  <div class="portal-card" data-target="admin-finance.html" data-pass-key="password_finance">
+    <div class="portal-icon">💰</div>
+    <div class="portal-title">المؤسسة المالية</div>
+    <div class="portal-desc">بيع وشراء الأسهم</div>
+  </div>
+
+  <div class="portal-card" data-target="admin-advisor.html" data-pass-key="password_competitions">
+    <div class="portal-icon">💼</div>
+    <div class="portal-title">المستشار المالي</div>
+    <div class="portal-desc">خصم تكلفة الاستشارة</div>
+  </div>
+
+  <div class="portal-card admin-card" data-target="admin-control.html" data-pass-key="password_admin">
+    <div class="portal-icon">⚙️</div>
+    <div class="portal-title">إدارة المسابقة</div>
+  </div>
+
+  <a href="display-market.html" class="portal-card display-card" target="_blank" style="border-color:var(--navy)">
+    <div class="portal-icon">📊</div>
+    <div class="portal-title">شاشة البورصة</div>
+  </a>
+
+  <a href="display-results.html" class="portal-card display-card" target="_blank" style="border-color:var(--gold)">
+    <div class="portal-icon">🏆</div>
+    <div class="portal-title">شاشة النتائج</div>
+  </a>
+</div>
+
+<div class="overlay hidden" id="passOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">كلمة المرور</div>
+    <input type="password" id="passInput" placeholder="أدخل كلمة المرور" inputmode="text">
+    <button class="btn" id="confirmBtn">دخول</button>
+    <div class="modal-error" id="modalError"></div>
+    <span class="modal-cancel" id="cancelBtn">إلغاء</span>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentTarget = null;
+let currentPassKey = null;
+
+async function getPassword(key) {
+  const { data, error } = await sb.from('app_settings').select('value').eq('key', key).single();
+  if (error || !data) return null;
+  return data.value;
+}
+
+document.querySelectorAll('.portal-card[data-target]').forEach(card => {
+  card.addEventListener('click', () => {
+    currentTarget = card.dataset.target;
+    currentPassKey = card.dataset.passKey;
+    document.getElementById('modalTitle').textContent = card.querySelector('.portal-title').textContent;
+    document.getElementById('passInput').value = '';
+    document.getElementById('modalError').textContent = '';
+    document.getElementById('passOverlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('passInput').focus(), 100);
+  });
+});
+
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  document.getElementById('passOverlay').classList.add('hidden');
+});
+
+document.getElementById('confirmBtn').addEventListener('click', checkPassword);
+document.getElementById('passInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+
+async function checkPassword() {
+  const entered = document.getElementById('passInput').value;
+  const correct = await getPassword(currentPassKey);
+
+  if (correct !== null && entered === correct) {
+    sessionStorage.setItem('nadi_auth_' + currentPassKey, '1');
+    window.location.href = currentTarget;
+  } else {
+    document.getElementById('modalError').textContent = 'كلمة المرور غير صحيحة';
+  }
+}
+</script>
+</body>
+</html>
