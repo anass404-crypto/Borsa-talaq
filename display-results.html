@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نتائج المجموعات — بورصة تألق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #060B14;
+    --surface: #0D1620;
+    --surface-2: #142030;
+    --border: #1E2D40;
+    --text: #E8EAED;
+    --text-dim: #6B7684;
+    --navy: #0B2545;
+    --up: #00D964;
+    --up-glow: rgba(0,217,100,0.25);
+    --down: #FF3B5C;
+    --down-glow: rgba(255,59,92,0.25);
+    --gold: #D4A645;
+    --gold-glow: rgba(212,166,69,0.3);
+    --platinum: #E8F0FF;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    direction: rtl;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: linear-gradient(135deg, #0B2545 0%, #0D1620 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+  }
+  .brand { font-family:'Tajawal',sans-serif; font-weight:900; font-size:22px; color:#fff; }
+  .brand span { color:var(--gold); }
+  .header-title { font-family:'Tajawal',sans-serif; font-weight:800; font-size:18px; color:var(--text-dim); letter-spacing:1px; }
+  .clock { color:var(--text-dim); font-size:13px; font-variant-numeric:tabular-nums; }
+
+  /* ===== Groups grid ===== */
+  .groups-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    height: calc(100vh - 58px - 60px);
+  }
+
+  /* ===== Group card ===== */
+  .group-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .group-card.rank-1 {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, #1A1500 0%, var(--surface) 60%);
+    box-shadow: 0 0 40px var(--gold-glow), inset 0 0 30px var(--gold-glow);
+  }
+  .group-card.rank-1::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top right, rgba(212,166,69,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Rank badge */
+  .rank-badge {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--text-dim);
+    border: 2px solid var(--border);
+    transition: all 0.4s ease;
+  }
+  .rank-1 .rank-badge { background: var(--gold); color: #1a1000; border-color: #f5c842; font-size: 24px; box-shadow: 0 0 20px var(--gold-glow); }
+
+  /* Group name */
+  .group-top { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+  .group-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .group-name { font-family:'Tajawal',sans-serif; font-weight:900; font-size:28px; }
+  .rank-1 .group-name { color:#fff; }
+
+  /* Scores */
+  .scores-row { display:flex; gap:16px; margin-bottom:12px; }
+  .score-item { flex:1; background:var(--surface-2); border-radius:10px; padding:10px 12px; border:1px solid var(--border); }
+  .score-label { font-size:10px; color:var(--text-dim); margin-bottom:4px; font-weight:600; }
+  .score-value { font-family:'Tajawal',sans-serif; font-weight:800; font-size:18px; font-variant-numeric:tabular-nums; }
+  .score-total { font-size:28px; color:var(--gold); }
+
+  /* Progress bar */
+  .progress-wrap { margin-bottom:10px; }
+  .progress-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-bottom:5px; }
+  .progress-bar { height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:4px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Stock status */
+  .stock-status { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .stock-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-family:'Tajawal',sans-serif; font-weight:700; font-size:12px; }
+  .stock-badge.up { background:var(--up-glow); color:var(--up); }
+  .stock-badge.down { background:var(--down-glow); color:var(--down); }
+  .stock-badge.neutral { background:var(--surface-2); color:var(--text-dim); }
+
+  /* ===== Notification popup ===== */
+  .notification {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: linear-gradient(135deg, var(--gold), #f5c842);
+    color: #1a1000;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 900;
+    font-size: 20px;
+    padding: 14px 32px;
+    border-radius: 40px;
+    box-shadow: 0 8px 40px var(--gold-glow);
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .notification.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ===== Bottom ticker ===== */
+  .bottom-bar {
+    height: 60px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    padding: 0 20px;
+    gap: 20px;
+  }
+  .bottom-label { color:var(--gold); font-family:'Tajawal',sans-serif; font-weight:800; font-size:12px; white-space:nowrap; flex-shrink:0; }
+  .ticker-track { display:flex; gap:30px; white-space:nowrap; animation:scroll-rtl 40s linear infinite; padding-right:100%; }
+  @keyframes scroll-rtl { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+  .ticker-item { display:flex; align-items:center; gap:7px; font-family:'Tajawal',sans-serif; font-weight:700; font-size:13px; }
+  .ticker-name { color:var(--text-dim); font-size:11px; }
+  .ticker-price { font-variant-numeric:tabular-nums; }
+  .ticker-change { font-size:11px; }
+  .up { color:var(--up); }
+  .down { color:var(--down); }
+
+  /* Rank change animation */
+  @keyframes rankUp { 0%{transform:translateY(30px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+  @keyframes rankDown { 0%{transform:translateY(-30px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+  @keyframes pulse-gold { 0%,100%{box-shadow:0 0 40px var(--gold-glow)} 50%{box-shadow:0 0 80px rgba(212,166,69,0.6)} }
+  .rank-1 { animation: pulse-gold 2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">بورصة <span>تألق</span></div>
+  <div class="header-title">🏆 لوحة النتائج الحية</div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="groups-grid" id="groupsGrid"></div>
+
+<div class="notification" id="notification"></div>
+
+<div class="bottom-bar">
+  <div class="bottom-label">سوق الأسهم</div>
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://reiyrcqafvejnbeejava.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2FGcmrEoGCouOiaDy_1HGw_qjzRYocC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let groups = [];
+let companies = [];
+let holdings = [];
+let prevRanks = {};
+
+function fmt(n) { return Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtD(n) { return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function playCheer() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [523,659,784,1047].forEach((freq,i)=>{
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.15,ctx.currentTime+i*0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.1+0.3);
+      osc.start(ctx.currentTime+i*0.1);
+      osc.stop(ctx.currentTime+i*0.1+0.3);
+    });
+  } catch(e){}
+}
+
+function showNotification(text) {
+  const el = document.getElementById('notification');
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+function portfolioStockValue(groupId) {
+  return holdings.filter(h=>h.group_id===groupId).reduce((sum,h)=>{
+    const c=companies.find(c=>c.id===h.company_id);
+    return sum+(c?c.current_price*h.shares_owned:0);
+  },0);
+}
+
+function portfolioPnL(groupId) {
+  return holdings.filter(h=>h.group_id===groupId && h.shares_owned>0).reduce((sum,h)=>{
+    const c=companies.find(c=>c.id===h.company_id);
+    if(!c) return sum;
+    return sum+(c.current_price - h.avg_purchase_price)*h.shares_owned;
+  },0);
+}
+
+function renderGroups() {
+  const grid = document.getElementById('groupsGrid');
+  const maxTotal = Math.max(...groups.map(g=>g._total||0), 1);
+
+  const ranked = [...groups]
+    .map(g=>({...g, _stockVal:portfolioStockValue(g.id), _total:g.balance+portfolioStockValue(g.id), _pnl:portfolioPnL(g.id)}))
+    .sort((a,b)=>b._total-a._total);
+
+  // check rank changes
+  ranked.forEach((g,i)=>{
+    const rank = i+1;
+    if(prevRanks[g.id] && prevRanks[g.id] !== rank) {
+      // rank changed — we'll handle animation via CSS order
+    }
+    prevRanks[g.id] = rank;
+  });
+
+  const sortedMax = Math.max(...ranked.map(g=>g._total),1);
+
+  grid.innerHTML = ranked.map((g,i)=>{
+    const pnlCls = g._pnl>0?'up':g._pnl<0?'down':'neutral';
+    const pnlArrow = g._pnl>0?'▲':g._pnl<0?'▼':'—';
+    const pnlText = g._pnl!==0?`${pnlArrow} ${fmt(Math.abs(g._pnl))} ر.س من الأسهم`:'لا توجد أسهم';
+    const progressPct = Math.min(100,(g._total/sortedMax)*100).toFixed(1);
+    const progressColor = i===0?'var(--gold)':i===1?'#9BB1CC':i===2?'#CD7F32':'#6B7684';
+    return `
+    <div class="group-card rank-${i+1}" style="order:${i}">
+      <div class="rank-badge">${['🥇','🥈','🥉','٤'][i]||i+1}</div>
+      <div>
+        <div class="group-top">
+          <span class="group-dot" style="background:${g.color}"></span>
+          <span class="group-name">${g.name}</span>
+        </div>
+        <div class="scores-row">
+          <div class="score-item">
+            <div class="score-label">السيولة النقدية</div>
+            <div class="score-value">${fmt(g.balance)}</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">قيمة الأسهم</div>
+            <div class="score-value">${fmt(g._stockVal)}</div>
+          </div>
+          <div class="score-item" style="border-color:${progressColor}40">
+            <div class="score-label">الإجمالي</div>
+            <div class="score-value score-total">${fmt(g._total)}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>التقدم</span><span>${progressPct}%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${progressPct}%;background:${progressColor}"></div></div>
+        </div>
+        <div class="stock-status">
+          <span class="stock-badge ${pnlCls}">${pnlText}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTicker() {
+  const track = document.getElementById('tickerTrack');
+  const items = companies.map(c=>{
+    const change=c.current_price-c.previous_price;
+    const pct=c.previous_price?(change/c.previous_price)*100:0;
+    const cls=change>=0?'up':'down';
+    const arrow=change>=0?'▲':'▼';
+    return `<div class="ticker-item"><span>${c.ticker}</span><span class="ticker-name">${c.name}</span><span class="ticker-price">${fmtD(c.current_price)}</span><span class="ticker-change ${cls}">${arrow}${Math.abs(pct).toFixed(1)}%</span></div>`;
+  }).join('');
+  track.innerHTML = items+items;
+}
+
+document.addEventListener('click', ()=>{
+  try { new (window.AudioContext||window.webkitAudioContext)(); } catch(e){}
+},{once:true});
+
+async function loadAll() {
+  const [{data:g},{data:c},{data:h}] = await Promise.all([
+    sb.from('groups').select('*'),
+    sb.from('companies').select('*').order('ticker'),
+    sb.from('holdings').select('*'),
+  ]);
+  groups=g||[]; companies=c||[]; holdings=h||[];
+  renderGroups(); renderTicker();
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock,1000); updateClock();
+loadAll();
+
+sb.channel('public:groups')
+  .on('postgres_changes',{event:'*',schema:'public',table:'groups'},payload=>{
+    const prev = groups.find(g=>g.id===payload.new?.id);
+    if(payload.eventType==='UPDATE'){
+      const idx=groups.findIndex(g=>g.id===payload.new.id);
+      if(idx>=0){
+        const added = payload.new.balance - groups[idx].balance;
+        if(added>0){
+          playCheer();
+          const g=groups[idx];
+          showNotification(`🏆 ${payload.new.name} +${fmt(added)} ريال!`);
+        }
+        groups[idx]=payload.new;
+      }
+    } else if(payload.eventType==='INSERT') groups.push(payload.new);
+    else if(payload.eventType==='DELETE') groups=groups.filter(g=>g.id!==payload.old.id);
+    renderGroups();
+  }).subscribe();
+
+sb.channel('public:companies')
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},payload=>{
+    const idx=companies.findIndex(c=>c.id===payload.new.id);
+    if(idx>=0) companies[idx]=payload.new;
+    renderTicker(); renderGroups();
+  }).subscribe();
+
+sb.channel('public:holdings')
+  .on('postgres_changes',{event:'*',schema:'public',table:'holdings'},payload=>{
+    if(payload.eventType==='DELETE') holdings=holdings.filter(h=>h.id!==payload.old.id);
+    else { const idx=holdings.findIndex(h=>h.id===payload.new.id); if(idx>=0) holdings[idx]=payload.new; else holdings.push(payload.new); }
+    renderGroups();
+  }).subscribe();
+</script>
+</body>
+</html>
